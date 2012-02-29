@@ -290,7 +290,7 @@
     ipData = flowData.getDate(date).getIp(ip);
     return res.render('ip', {
       ip: ip,
-      data: ipData
+      ipData: ipData
     });
   });
 

@@ -185,7 +185,7 @@ app.get '/:ip', (req, res) ->
     res.redirect '/category'
     return
   ipData = flowData.getDate(date).getIp(ip)
-  res.render 'ip', { ip: ip, data: ipData }
+  res.render 'ip', { ip: ip, ipData: ipData }
 
 app.get '/:ip/:year/:month', ->
   res.render 'daily'
