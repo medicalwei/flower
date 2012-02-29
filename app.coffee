@@ -49,9 +49,9 @@ class Users
       }
     return userData
   getUser: (ip) ->
-    if not ip of data
-      list[ip] = new User
-    return list[ip]
+    if not ip of @list
+      @list[ip] = new User
+    return @list[ip]
 
 users = new Users
 
