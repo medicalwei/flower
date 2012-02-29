@@ -5,7 +5,9 @@
 */
 
 (function() {
-  var NetflowPacket, User, Users, app, config, dgram, express, netflowClient, users;
+  var DailyData, Data, FlowData, HourlyData, IpData, NetflowPacket, UserStorage, app, config, cronJob, dateFormat, dgram, express, flowData, mongo, netflowClient,
+    __hasProp = Object.prototype.hasOwnProperty,
+    __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   config = require('./config');
 
@@ -15,59 +17,170 @@
 
   NetflowPacket = require('NetFlowPacket');
 
+  cronJob = require('cron').CronJob;
+
+  dateFormat = require('dateformat');
+
+  mongo = require('mongodb');
+
   app = module.exports = express.createServer();
 
-  User = (function() {
+  UserStorage = (function() {
 
-    function User() {
+    function UserStorage(host, port) {
+      var server;
+      server = new mongo.Server(host, port, {
+        auto_reconnect: true
+      }, {});
+      this.db = new mongo.Db('flower', server);
+      this.db.open(function() {});
+    }
+
+    UserStorage.prototype.getCollection = function(callback) {
+      return this.db.collection('history', function(error, collection) {
+        if (error) {
+          return callback(error);
+        } else {
+          return callback(null, collection);
+        }
+      });
+    };
+
+    UserStorage.prototype.createData = function(dailyData, callback) {
+      return this.getCollection(function(error, collection) {
+        if (error) {
+          return callback(error);
+        } else {
+
+        }
+      });
+    };
+
+    return UserStorage;
+
+  })();
+
+  Data = (function() {
+
+    function Data() {
       this.upload = 0;
       this.download = 0;
     }
 
-    User.prototype.getUpload = function() {
+    Data.prototype.getUpload = function() {
       return this.upload;
     };
 
-    User.prototype.getDownload = function() {
+    Data.prototype.getDownload = function() {
       return this.download;
     };
 
-    User.prototype.getTotal = function() {
+    Data.prototype.getTotal = function() {
       return this.upload + this.download;
     };
 
-    User.prototype.addUpload = function(bytes) {
+    Data.prototype.addUpload = function(bytes) {
       return this.upload += bytes;
     };
 
-    User.prototype.addDownload = function(bytes) {
+    Data.prototype.addDownload = function(bytes) {
       return this.download += bytes;
     };
 
-    User.prototype.isBanned = function() {
+    return Data;
+
+  })();
+
+  HourlyData = (function() {
+
+    function HourlyData() {
+      this.hours = [];
+    }
+
+    HourlyData.prototype.getHour = function(hour) {
+      if (!(hour in this.hours)) this.hours[hour] = new Data();
+      return this.hours[hour];
+    };
+
+    HourlyData.prototype.getHours = function() {
+      return this.hours;
+    };
+
+    return HourlyData;
+
+  })();
+
+  IpData = (function(_super) {
+
+    __extends(IpData, _super);
+
+    function IpData() {
+      IpData.__super__.constructor.apply(this, arguments);
+      this.hourlyData = new HourlyData;
+    }
+
+    IpData.prototype.getHourlyData = function() {
+      return this.hourlyData;
+    };
+
+    IpData.prototype.isBanned = function() {
       return config.banningRule(this);
     };
 
-    return User;
-
-  })();
-
-  Users = (function() {
-
-    function Users() {
-      this.list = {};
-    }
-
-    Users.prototype.getUser = function(ip) {
-      if (!(ip in this.list)) this.list[ip] = new User;
-      return this.list[ip];
+    IpData.prototype.addUpload = function(date, bytes) {
+      IpData.__super__.addUpload.call(this, bytes);
+      return this.hourlyData.getHour(date.getHours()).addUpload(bytes);
     };
 
-    return Users;
+    IpData.prototype.addDownload = function(date, bytes) {
+      IpData.__super__.addDownload.call(this, bytes);
+      return this.hourlyData.getHour(date.getHours()).addDownload(bytes);
+    };
+
+    return IpData;
+
+  })(Data);
+
+  DailyData = (function() {
+
+    function DailyData(date) {
+      this.ips = {};
+      this.date = date;
+    }
+
+    DailyData.prototype.getIp = function(ip) {
+      if (!(ip in this.ips)) this.ips[ip] = new IpData;
+      return this.ips[ip];
+    };
+
+    return DailyData;
 
   })();
 
-  users = new Users;
+  FlowData = (function() {
+
+    function FlowData() {
+      this.days = {};
+    }
+
+    FlowData.prototype.getDate = function(date) {
+      var dateString;
+      dateString = dateFormat(date, 'yyyy-mm-dd');
+      if (!(dateString in this.list)) this.days[dateString] = new Daily(date);
+      return this.days[dateString];
+    };
+
+    FlowData.prototype.deleteDate = function(date) {
+      var dateString;
+      dateString = dateFormat(date, 'yyyy-mm-dd');
+      return delete this.days[dateString];
+    };
+
+    return FlowData;
+
+  })();
+
+  flowData = new FlowData;
 
   app.configure(function() {
     app.set('views', __dirname + '/views');
@@ -96,9 +209,10 @@
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, flow, ip, packet, status, user, _i, _len, _ref, _results;
+    var bytes, date, flow, ip, packet, status, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
+      date = Date();
       if (packet.header.version === 5) {
         _ref = packet.v5Flows;
         _results = [];
@@ -116,13 +230,13 @@
             continue;
           }
           if (!config.ipRule(ip)) continue;
-          user = users.getUser(ip);
+          ip = data.getDate(date).getIp(ip);
           switch (status) {
             case "upload":
-              _results.push(user.addUpload(bytes));
+              _results.push(ip.addUpload(date(bytes)));
               break;
             case "download":
-              _results.push(user.addDownload(bytes));
+              _results.push(ip.addDownload(date(bytes)));
               break;
             default:
               _results.push(void 0);
@@ -137,6 +251,11 @@
 
   netflowClient.bind(config.netflowPort);
 
+  cronJob('0 0 0 * * *', function() {
+    var list;
+    return list = users.rotate();
+  });
+
   app.get('/', function(req, res) {
     var remoteIp;
     remoteIp = req.connection.remoteAddress;
@@ -147,18 +266,39 @@
     }
   });
 
+  app.get('/category', function() {
+    return res.render('categories');
+  });
+
+  app.get('/category/:category', function() {
+    return res.render('category');
+  });
+
+  app.get('/banned', function() {
+    return res.render('banned');
+  });
+
   app.get('/:ip', function(req, res) {
-    var ip, user;
+    var date, ip, ipData;
     ip = req.params.ip;
+    date = Date();
     if (!config.ipRule(ip)) {
       res.redirect('/category');
       return;
     }
-    user = users.getUser(ip);
+    ipData = flowData.getDate(date).getIp(ip);
     return res.render('ip', {
       ip: ip,
-      user: user
+      data: ipData
     });
+  });
+
+  app.get('/:ip/:year/:month', function() {
+    return res.render('daily');
+  });
+
+  app.get('/:ip/:year/:month/:day', function() {
+    return res.render('hourly');
   });
 
   app.listen(3000);

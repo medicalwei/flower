@@ -7,54 +7,92 @@ config = require './config'
 express = require 'express'
 dgram = require 'dgram'
 NetflowPacket = require 'NetFlowPacket'
+cronJob = require('cron').CronJob
+dateFormat = require 'dateformat'
+mongo = require 'mongodb'
 
 app = module.exports = express.createServer()
 
-# Data structure
-# data = 
-#   {
-#     '127.0.0.1':
-#       {
-#         upload: 1234325231
-#         download: 2412533235
-#       }
-#   }
-# 
-# banList = 
-#   {
-#     '127.0.0.2':
-#       {
-#         days: 1
-#         since: 1330475702
-#       }
-#   }
+class UserStorage
+  constructor: (host, port) ->
+    server = new mongo.Server host, port, {auto_reconnect: true}, {}
+    @db = new mongo.Db 'flower', server
+    @db.open ->
+      # does nothing
+  getCollection: (callback) ->
+    @db.collection 'history', (error, collection) ->
+      if error 
+        callback error
+      else 
+        callback null, collection
+  createData: (dailyData, callback) ->
+    @getCollection (error, collection) ->
+      if error
+        callback error
+      else
+        # TODO
 
-class User
+class Data
   constructor: ->
     @upload = 0
     @download = 0
   getUpload: ->
-    return @upload
+    @upload
   getDownload: ->
-    return @download
+    @download
   getTotal: ->
-    return @upload+@download
+    @upload + @download
   addUpload: (bytes) ->
     @upload += bytes
   addDownload: (bytes) ->
     @download += bytes
+
+class HourlyData
+  constructor: ->
+    @hours = []
+  getHour: (hour) ->
+    if not (hour of @hours)
+      @hours[hour] = new Data()
+    @hours[hour]
+  getHours: ->
+    @hours
+
+class IpData extends Data
+  constructor: ->
+    super
+    @hourlyData = new HourlyData
+  getHourlyData: ->
+    @hourlyData
   isBanned: ->
     config.banningRule this
+  addUpload: (date, bytes) ->
+    super bytes
+    @hourlyData.getHour(date.getHours()).addUpload(bytes)
+  addDownload: (date, bytes) ->
+    super bytes
+    @hourlyData.getHour(date.getHours()).addDownload(bytes)
 
-class Users
-  constructor: ->
-    @list = {}
-  getUser: (ip) ->
-    if not (ip of @list)
-      @list[ip] = new User
-    return @list[ip]
+class DailyData
+  constructor: (date)->
+    @ips = {}
+    @date = date
+  getIp: (ip) ->
+    if not (ip of @ips)
+      @ips[ip] = new IpData
+    @ips[ip]
 
-users = new Users
+class FlowData
+  constructor: -> @days = {}
+  getDate: (date) ->
+    dateString = dateFormat date, 'yyyy-mm-dd'
+    if not (dateString of @list)
+      @days[dateString] = new Daily(date)
+    @days[dateString]
+  deleteDate: (date)->
+    dateString = dateFormat date, 'yyyy-mm-dd'
+    delete @days[dateString]
+
+flowData = new FlowData
 
 # Configuration
 
@@ -79,7 +117,8 @@ netflowClient = dgram.createSocket "udp4"
 
 netflowClient.on "message", (mesg, rinfo) ->
   try
-    packet = new NetflowPacket mesg;
+    packet = new NetflowPacket mesg
+    date = Date();
     if packet.header.version == 5
       for flow in packet.v5Flows
         if flow.input == config.outboundInterface
@@ -103,10 +142,10 @@ netflowClient.on "message", (mesg, rinfo) ->
           continue
 
         continue if not config.ipRule ip
-        user = users.getUser(ip)
+        ip = data.getDate(date).getIp(ip)
         switch status
-          when "upload" then user.addUpload bytes
-          when "download" then user.addDownload bytes
+          when "upload" then ip.addUpload date bytes
+          when "download" then ip.addDownload date bytes
 
         # TODO: do banning in packet receiving event
 
@@ -114,6 +153,11 @@ netflowClient.on "message", (mesg, rinfo) ->
     console.error err
 
 netflowClient.bind config.netflowPort
+
+# cron job
+
+cronJob '0 0 0 * * *', ->
+  list = users.rotate()
 
 # Routes
 
@@ -124,23 +168,29 @@ app.get '/', (req, res) ->
   else
     res.redirect '/category'
 
-# TODO: app.get '/category', routes.categories
+app.get '/category', ->
+  res.render 'categories'
 
-# TODO: app.get '/category/:category', routes.category
+app.get '/category/:category', ->
+  res.render 'category'
 
-# TODO: app.get '/banned', routes.banned
+app.get '/banned', ->
+  res.render 'banned'
 
 app.get '/:ip', (req, res) ->
   ip = req.params.ip
+  date = Date() # assuming today if no prompt.
   if not config.ipRule ip
     res.redirect '/category'
     return
-  user= users.getUser ip
-  res.render 'ip', { ip: ip, user: user }
+  ipData = flowData.getDate(date).getIp(ip)
+  res.render 'ip', { ip: ip, data: ipData }
 
-# TODO: app.get '/:ip/:year/:month', routes.ipHistoryPerDay
+app.get '/:ip/:year/:month', ->
+  res.render 'daily'
 
-# TODO: app.get '/:ip/:year/:month/:day', routes.ipHistoryPerHours
+app.get '/:ip/:year/:month/:day', ->
+  res.render 'hourly'
 
 # Start listening
 

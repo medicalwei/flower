@@ -1,5 +1,9 @@
 h1= ip
 ul
-  li Total: #{user.getTotal()}
-  li Upload: #{user.getUpload()}
-  li Download: #{user.getDownload()}
+  li Total: #{ipData.getTotal()}
+  li Upload: #{ipData.getUpload()}
+  li Download: #{ipData.getDownload()}
+h2 Hourly usage
+ul
+  each hourData, hour in ipData.getHourlyData().getHours()
+    li #{hour}: #{hourData.getTotal()}
