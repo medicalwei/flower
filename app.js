@@ -166,7 +166,7 @@
     FlowData.prototype.getDate = function(date) {
       var dateString;
       dateString = dateFormat(date, 'yyyy-mm-dd');
-      if (!(dateString in this.list)) this.days[dateString] = new Daily(date);
+      if (!(dateString in this.days)) this.days[dateString] = new DailyData(date);
       return this.days[dateString];
     };
 
@@ -209,10 +209,11 @@
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, date, flow, ip, packet, status, _i, _len, _ref, _results;
+    var bytes, dailyData, date, flow, ip, packet, status, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
       date = Date();
+      dailyData = flowData.getDate(date);
       if (packet.header.version === 5) {
         _ref = packet.v5Flows;
         _results = [];
@@ -230,13 +231,13 @@
             continue;
           }
           if (!config.ipRule(ip)) continue;
-          ip = data.getDate(date).getIp(ip);
+          ip = dailyData.getIp(ip);
           switch (status) {
             case "upload":
-              _results.push(ip.addUpload(date(bytes)));
+              _results.push(ip.addUpload(date, bytes));
               break;
             case "download":
-              _results.push(ip.addDownload(date(bytes)));
+              _results.push(ip.addDownload(date, bytes));
               break;
             default:
               _results.push(void 0);

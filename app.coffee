@@ -85,8 +85,8 @@ class FlowData
   constructor: -> @days = {}
   getDate: (date) ->
     dateString = dateFormat date, 'yyyy-mm-dd'
-    if not (dateString of @list)
-      @days[dateString] = new Daily(date)
+    if not (dateString of @days)
+      @days[dateString] = new DailyData(date)
     @days[dateString]
   deleteDate: (date)->
     dateString = dateFormat date, 'yyyy-mm-dd'
@@ -118,7 +118,8 @@ netflowClient = dgram.createSocket "udp4"
 netflowClient.on "message", (mesg, rinfo) ->
   try
     packet = new NetflowPacket mesg
-    date = Date();
+    date = Date()
+    dailyData = flowData.getDate(date)
     if packet.header.version == 5
       for flow in packet.v5Flows
         if flow.input == config.outboundInterface
@@ -142,10 +143,10 @@ netflowClient.on "message", (mesg, rinfo) ->
           continue
 
         continue if not config.ipRule ip
-        ip = data.getDate(date).getIp(ip)
+        ip = dailyData.getIp ip
         switch status
-          when "upload" then ip.addUpload date bytes
-          when "download" then ip.addDownload date bytes
+          when "upload" then ip.addUpload date, bytes
+          when "download" then ip.addDownload date, bytes
 
         # TODO: do banning in packet receiving event
 
