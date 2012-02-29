@@ -50,7 +50,7 @@ class Users
   constructor: ->
     @list = {}
   getUser: (ip) ->
-    if not ip of @list
+    if not (ip of @list)
       @list[ip] = new User
     return @list[ip]
 

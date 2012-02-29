@@ -59,7 +59,7 @@
     }
 
     Users.prototype.getUser = function(ip) {
-      if (!ip in this.list) this.list[ip] = new User;
+      if (!(ip in this.list)) this.list[ip] = new User;
       return this.list[ip];
     };
 
