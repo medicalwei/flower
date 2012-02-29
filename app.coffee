@@ -50,9 +50,9 @@ class Data
 class HourlyData
   constructor: ->
     @hours = []
-  getHour: (hour) ->
-    if not (hour of @hours)
+    for hour in [0..23]
       @hours[hour] = new Data()
+  getHour: (hour) ->
     @hours[hour]
   getHours: ->
     @hours

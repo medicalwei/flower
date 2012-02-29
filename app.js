@@ -94,11 +94,14 @@
   HourlyData = (function() {
 
     function HourlyData() {
+      var hour;
       this.hours = [];
+      for (hour = 0; hour <= 23; hour++) {
+        this.hours[hour] = new Data();
+      }
     }
 
     HourlyData.prototype.getHour = function(hour) {
-      if (!(hour in this.hours)) this.hours[hour] = new Data();
       return this.hours[hour];
     };
 
