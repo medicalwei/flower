@@ -134,6 +134,7 @@ app.get '/:ip', (req, res) ->
   ip = req.params.ip
   if not config.ipRule ip
     res.redirect '/category'
+    return
   user= users.getUser ip
   res.render 'ip', { ip: ip, user: user }
 

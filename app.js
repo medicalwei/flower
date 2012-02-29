@@ -150,7 +150,10 @@
   app.get('/:ip', function(req, res) {
     var ip, user;
     ip = req.params.ip;
-    if (!config.ipRule(ip)) res.redirect('/category');
+    if (!config.ipRule(ip)) {
+      res.redirect('/category');
+      return;
+    }
     user = users.getUser(ip);
     return res.render('ip', {
       ip: ip,
