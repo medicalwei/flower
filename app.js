@@ -24,6 +24,26 @@
       this.download = 0;
     }
 
+    User.prototype.getUpload = function() {
+      return this.upload;
+    };
+
+    User.prototype.getDownload = function() {
+      return this.download;
+    };
+
+    User.prototype.getTotal = function() {
+      return this.upload + this.download;
+    };
+
+    User.prototype.addUpload = function(bytes) {
+      return this.upload += bytes;
+    };
+
+    User.prototype.addDownload = function(bytes) {
+      return this.download += bytes;
+    };
+
     User.prototype.isBanned = function() {
       return config.banningRule(this);
     };
@@ -37,17 +57,6 @@
     function Users() {
       this.list = {};
     }
-
-    Users.prototype.getData = function(ip) {
-      var user, userData;
-      user = this.getUser(ip);
-      userData = {
-        upload: user.upload,
-        download: user.download,
-        total: user.getTotal()
-      };
-      return userData;
-    };
 
     Users.prototype.getUser = function(ip) {
       if (!ip in this.list) this.list[ip] = new User;
@@ -108,7 +117,16 @@
           }
           if (!config.ipRule(ip)) continue;
           user = users.getUser(ip);
-          _results.push(user[status] += bytes);
+          switch (status) {
+            case "upload":
+              _results.push(user.addUpload(bytes));
+              break;
+            case "download":
+              _results.push(user.addDownload(bytes));
+              break;
+            default:
+              _results.push(void 0);
+          }
         }
         return _results;
       }
@@ -130,13 +148,13 @@
   });
 
   app.get('/:ip', function(req, res) {
-    var ip, userData;
+    var ip, user;
     ip = req.params.ip;
     if (!config.ipRule(ip)) res.redirect('/category');
-    userData = users.getData(ip);
+    user = users.getUser(ip);
     return res.render('ip', {
       ip: ip,
-      data: userData
+      user: user
     });
   });
 

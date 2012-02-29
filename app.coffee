@@ -33,21 +33,22 @@ class User
   constructor: ->
     @upload = 0
     @download = 0
+  getUpload: ->
+    return @upload
+  getDownload: ->
+    return @download
+  getTotal: ->
+    return @upload+@download
+  addUpload: (bytes) ->
+    @upload += bytes
+  addDownload: (bytes) ->
+    @download += bytes
   isBanned: ->
     config.banningRule this
 
 class Users
   constructor: ->
     @list = {}
-  getData: (ip) ->
-    user = @getUser ip;
-    userData = 
-      { 
-        upload: user.upload
-        download: user.download
-        total: user.getTotal()
-      }
-    return userData
   getUser: (ip) ->
     if not ip of @list
       @list[ip] = new User
@@ -103,7 +104,9 @@ netflowClient.on "message", (mesg, rinfo) ->
 
         continue if not config.ipRule ip
         user = users.getUser(ip)
-        user[status] += bytes
+        switch status
+          when "upload" then user.addUpload bytes
+          when "download" then user.addDownload bytes
 
         # TODO: do banning in packet receiving event
 
@@ -131,8 +134,8 @@ app.get '/:ip', (req, res) ->
   ip = req.params.ip
   if not config.ipRule ip
     res.redirect '/category'
-  userData = users.getData ip
-  res.render 'ip', { ip: ip, data: userData }
+  user= users.getUser ip
+  res.render 'ip', { ip: ip, user: user }
 
 # TODO: app.get '/:ip/:year/:month', routes.ipHistoryPerDay
 
