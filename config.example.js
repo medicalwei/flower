@@ -6,7 +6,7 @@ flower configurations
 exports.siteName = "Dormitory flow";
 
 // netflowPort
-exports.netflowPort = 10000;
+exports.netflowPort = 9991;
 
 // outbound SNMP interface index
 exports.outboundInterface = 0x0017;
@@ -18,8 +18,8 @@ exports.ipRule = function(ip) {
 }
 
 // banning rule
-exports.banningRule = function(upload, dowload) {
-  return (upload + download) > 3221225472;
+exports.banningRule = function(user) {
+  return user.upload + user.download > 3221225472;
 }
 
 /* TODO: banning trigger

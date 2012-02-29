@@ -17,21 +17,9 @@
 
   app = module.exports = express.createServer();
 
-  data = {
-    15399: {
-      '127.0.0.1': {
-        upload: 1234325231,
-        download: 2412533235
-      }
-    }
-  };
+  data = {};
 
-  banList = {
-    '127.0.0.2': {
-      days: 1,
-      since: 1330475702
-    }
-  };
+  banList = {};
 
   app.configure(function() {
     app.set('views', __dirname + '/views');
@@ -60,10 +48,7 @@
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, date, epoch, flow, ip, offset, packet, status, _i, _len, _ref, _results;
-    date = new Date;
-    offset = date.getTimezoneOffset() * 60000;
-    epoch = (date.getTime() + offset) / 86400000;
+    var bytes, flow, ip, packet, status, user, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
       if (packet.header.version === 5) {
@@ -83,7 +68,8 @@
             continue;
           }
           if (!config.ipRule(ip)) continue;
-          _results.push(data[epoch][ip][status] += bytes);
+          user = data[ip];
+          _results.push(user[status] += bytes);
         }
         return _results;
       }
@@ -95,18 +81,36 @@
   netflowClient.bind(config.netflowPort);
 
   app.get('/', function(req, res) {
-    return res.redirect('/' + req.connection.remoteAddress);
+    var remoteIp;
+    remoteIp = req.connection.remoteAddress;
+    if (config.ipRule(remoteIp)) {
+      return res.redirect('/' + req.connection.remoteAddress);
+    } else {
+      return res.redirect('/category');
+    }
   });
 
   app.get('/:ip', function(req, res) {
-    var ip;
+    var ip, user, userData;
     ip = req.params.ip;
     if (ip in data) {
-      return res.render('ip', {
-        ip: ip,
-        data: data[ip]
-      });
+      user = data[ip];
+      userData = {
+        upload: user.upload,
+        download: user.download,
+        total: user.upload + user.download
+      };
+    } else {
+      userData = {
+        upload: 0,
+        download: 0,
+        total: 0
+      };
     }
+    return res.render('ip', {
+      ip: ip,
+      data: userData
+    });
   });
 
   app.listen(3000);

@@ -10,26 +10,27 @@ NetflowPacket = require 'NetFlowPacket'
 
 app = module.exports = express.createServer()
 
-# Dummy data
+# Data structure
+# data = 
+#   {
+#     '127.0.0.1':
+#       {
+#         upload: 1234325231
+#         download: 2412533235
+#       }
+#   }
+# 
+# banList = 
+#   {
+#     '127.0.0.2':
+#       {
+#         days: 1
+#         since: 1330475702
+#       }
+#   }
 
-data = {
-         15399:
-           {
-             '127.0.0.1':
-               {
-                 upload: 1234325231
-                 download: 2412533235
-               }
-           }
-       }
-
-banList = {
-            '127.0.0.2':
-              {
-                days: 1
-                since: 1330475702
-              }
-          }
+data = {}
+banList = {}
 
 # Configuration
 
@@ -53,9 +54,6 @@ app.configure 'production', ->
 netflowClient = dgram.createSocket "udp4"
 
 netflowClient.on "message", (mesg, rinfo) ->
-  date = new Date;
-  offset = date.getTimezoneOffset() * 60000
-  epoch = (date.getTime() + offset) / 86400000
   try
     packet = new NetflowPacket mesg;
     if packet.header.version == 5
@@ -81,19 +79,24 @@ netflowClient.on "message", (mesg, rinfo) ->
           continue
 
         continue if not config.ipRule ip
-        data[epoch][ip][status] += bytes;
+        user = data[ip]
+        user[status] += bytes
+
         # TODO: do banning in packet receiving event
 
   catch err
     console.error err
 
-netflowClient.bind(config.netflowPort)
+netflowClient.bind config.netflowPort
 
 # Routes
 
 app.get '/', (req, res) ->
-  # TODO: check if the address is valid
-  res.redirect '/'+req.connection.remoteAddress
+  remoteIp = req.connection.remoteAddress
+  if config.ipRule remoteIp
+    res.redirect '/'+req.connection.remoteAddress
+  else
+    res.redirect '/category'
 
 # TODO: app.get '/category', routes.categories
 
@@ -103,8 +106,23 @@ app.get '/', (req, res) ->
 
 app.get '/:ip', (req, res) ->
   ip = req.params.ip
+  # TODO: put user data into classes
   if ip of data
-    res.render 'ip', { ip: ip, data: data[ip] }
+    user = data[ip]
+    userData = 
+      { 
+        upload: user.upload
+        download: user.download
+        total: user.upload + user.download
+      }
+  else
+    userData = 
+      { 
+        upload: 0
+        download: 0
+        total: 0
+      }
+  res.render 'ip', { ip: ip, data: userData }
 
 # TODO: app.get '/:ip/:year/:month', routes.ipHistoryPerDay
 
