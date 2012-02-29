@@ -212,7 +212,7 @@
     var bytes, dailyData, date, flow, ip, packet, status, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
-      date = Date();
+      date = new Date();
       dailyData = flowData.getDate(date);
       if (packet.header.version === 5) {
         _ref = packet.v5Flows;

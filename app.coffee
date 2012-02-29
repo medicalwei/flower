@@ -118,7 +118,7 @@ netflowClient = dgram.createSocket "udp4"
 netflowClient.on "message", (mesg, rinfo) ->
   try
     packet = new NetflowPacket mesg
-    date = Date()
+    date = new Date()
     dailyData = flowData.getDate(date)
     if packet.header.version == 5
       for flow in packet.v5Flows
