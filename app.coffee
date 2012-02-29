@@ -29,8 +29,31 @@ app = module.exports = express.createServer()
 #       }
 #   }
 
-data = {}
-banList = {}
+class User
+  constructor: ->
+    @upload = 0
+    @download = 0
+  isBanned: ->
+    config.banningRule this
+
+class Users
+  constructor: ->
+    @list = {}
+  getData: (ip) ->
+    user = @getUser ip;
+    userData = 
+      { 
+        upload: user.upload
+        download: user.download
+        total: user.getTotal()
+      }
+    return userData
+  getUser: (ip) ->
+    if not ip of data
+      list[ip] = new User
+    return list[ip]
+
+users = new Users
 
 # Configuration
 
@@ -79,7 +102,7 @@ netflowClient.on "message", (mesg, rinfo) ->
           continue
 
         continue if not config.ipRule ip
-        user = data[ip]
+        user = users.getUser(ip)
         user[status] += bytes
 
         # TODO: do banning in packet receiving event
@@ -106,22 +129,9 @@ app.get '/', (req, res) ->
 
 app.get '/:ip', (req, res) ->
   ip = req.params.ip
-  # TODO: put user data into classes
-  if ip of data
-    user = data[ip]
-    userData = 
-      { 
-        upload: user.upload
-        download: user.download
-        total: user.upload + user.download
-      }
-  else
-    userData = 
-      { 
-        upload: 0
-        download: 0
-        total: 0
-      }
+  if not config.ipRule ip
+    res.redirect '/category'
+  userData = users.getData ip
   res.render 'ip', { ip: ip, data: userData }
 
 # TODO: app.get '/:ip/:year/:month', routes.ipHistoryPerDay

@@ -5,7 +5,7 @@
 */
 
 (function() {
-  var NetflowPacket, app, banList, config, data, dgram, express, netflowClient;
+  var NetflowPacket, User, Users, app, config, dgram, express, netflowClient, users;
 
   config = require('./config');
 
@@ -17,9 +17,48 @@
 
   app = module.exports = express.createServer();
 
-  data = {};
+  User = (function() {
 
-  banList = {};
+    function User() {
+      this.upload = 0;
+      this.download = 0;
+    }
+
+    User.prototype.isBanned = function() {
+      return config.banningRule(this);
+    };
+
+    return User;
+
+  })();
+
+  Users = (function() {
+
+    function Users() {
+      this.list = {};
+    }
+
+    Users.prototype.getData = function(ip) {
+      var user, userData;
+      user = this.getUser(ip);
+      userData = {
+        upload: user.upload,
+        download: user.download,
+        total: user.getTotal()
+      };
+      return userData;
+    };
+
+    Users.prototype.getUser = function(ip) {
+      if (!ip in data) list[ip] = new User;
+      return list[ip];
+    };
+
+    return Users;
+
+  })();
+
+  users = new Users;
 
   app.configure(function() {
     app.set('views', __dirname + '/views');
@@ -68,7 +107,7 @@
             continue;
           }
           if (!config.ipRule(ip)) continue;
-          user = data[ip];
+          user = users.getUser(ip);
           _results.push(user[status] += bytes);
         }
         return _results;
@@ -91,22 +130,10 @@
   });
 
   app.get('/:ip', function(req, res) {
-    var ip, user, userData;
+    var ip, userData;
     ip = req.params.ip;
-    if (ip in data) {
-      user = data[ip];
-      userData = {
-        upload: user.upload,
-        download: user.download,
-        total: user.upload + user.download
-      };
-    } else {
-      userData = {
-        upload: 0,
-        download: 0,
-        total: 0
-      };
-    }
+    if (!config.ipRule(ip)) res.redirect('/category');
+    userData = users.getData(ip);
     return res.render('ip', {
       ip: ip,
       data: userData
