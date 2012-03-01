@@ -202,10 +202,6 @@
     app.set('view engine', 'jade');
     app.use(express.bodyParser());
     app.use(express.methodOverride());
-    app.use(express.compiler({
-      src: __dirname + '/public',
-      enable: ['less']
-    }));
     app.use(app.router);
     return app.use(express.static(__dirname + '/public'));
   });
@@ -298,15 +294,15 @@
     }
   });
 
-  app.get('/category', function() {
+  app.get('/category', function(req, res) {
     return res.render('categories');
   });
 
-  app.get('/category/:category', function() {
+  app.get('/category/:category', function(req, res) {
     return res.render('category');
   });
 
-  app.get('/banned', function() {
+  app.get('/banned', function(req, res) {
     return res.render('banned');
   });
 
@@ -325,11 +321,11 @@
     });
   });
 
-  app.get('/:ip/:year/:month', function() {
+  app.get('/:ip/:year/:month', function(req, res) {
     return res.render('daily');
   });
 
-  app.get('/:ip/:year/:month/:day', function() {
+  app.get('/:ip/:year/:month/:day', function(req, res) {
     return res.render('hourly');
   });
 

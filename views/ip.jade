@@ -1,9 +1,17 @@
-h1= ip
-ul
-  li Total: #{ipData.getTotal()}
-  li Upload: #{ipData.upload}
-  li Download: #{ipData.download}
-h2 Hourly usage
-ul
-  each hourData, hour in ipData.hourlyData.hours
-    li #{hour}: #{hourData.getTotal()}
+div.page-header
+  h1 #{ip} 
+    small Live status
+div.row-fluid
+  div.total.span8.well
+    h2 Total
+    div.number=ipData.getTotal()
+  div.upload.span4
+    h2 Upload
+    div.number=ipData.upload
+    h2 Download
+    div.number=ipData.download
+div.row-fluid
+  p TODO: use charts
+  ul
+    each hourData, hour in ipData.hourlyData.hours
+      li #{hour}: #{hourData.getTotal()}

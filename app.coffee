@@ -105,7 +105,6 @@ app.configure ->
   app.set 'view engine', 'jade'
   app.use express.bodyParser()
   app.use express.methodOverride()
-  app.use express.compiler({ src: __dirname + '/public', enable: ['less'] })
   app.use app.router
   app.use express.static(__dirname + '/public')
 
@@ -187,13 +186,13 @@ app.get '/', (req, res) ->
   else
     res.redirect '/category'
 
-app.get '/category', ->
+app.get '/category', (req, res) ->
   res.render 'categories'
 
-app.get '/category/:category', ->
+app.get '/category/:category', (req, res) ->
   res.render 'category'
 
-app.get '/banned', ->
+app.get '/banned', (req, res) ->
   res.render 'banned'
 
 app.get '/:ip', (req, res) ->
@@ -205,10 +204,10 @@ app.get '/:ip', (req, res) ->
   ipData = flowData.getDate(date).getIp(ip)
   res.render 'ip', { ip: ip, ipData: ipData }
 
-app.get '/:ip/:year/:month', ->
+app.get '/:ip/:year/:month', (req, res) ->
   res.render 'daily'
 
-app.get '/:ip/:year/:month/:day', ->
+app.get '/:ip/:year/:month/:day', (req, res) ->
   res.render 'hourly'
 
 # Start listening
