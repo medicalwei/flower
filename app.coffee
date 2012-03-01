@@ -163,13 +163,13 @@ netflowClient.bind config.netflowPort
 # daily works
 cronJob '5 0 0 * * *', ->
   date = new Date()
-  date = date.setDate date.getHour()-1 # get last hour
+  date = date.setDate date.getHours()-1 # get last hour
   dataStorage.upsertData flowData.getDate(date), ->
     flowData.deleteDate date
 
 # hourly works
 cronJob '5 0 1-23 * * *', ->
-  date = date.setDate date.getHour()-1 # get last hour
+  date = date.setDate date.getHours()-1 # get last hour
   dataStorage.upsertData flowData.getDate(date), ->
 
 # Routes
