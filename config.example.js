@@ -3,10 +3,11 @@ flower configurations
 */
 
 // the web viewer title
-exports.siteName = "Dormitory flow";
+// exports.siteName = "Dormitory flow";
 
-// netflowPort
+// Ports
 exports.netflowPort = 9991;
+exports.httpPort = 3000;
 
 // outbound SNMP interface index
 exports.outboundInterface = 0x0017;

@@ -72,6 +72,47 @@
       });
     };
 
+    DataStorage.prototype.getDataFromDate = function(date, callback) {
+      return this.getCollection(function(error, collection) {
+        var dateString;
+        if (error) {
+          return callback(error);
+        } else {
+          dateString = dateFormat(date, 'yyyy-mm-dd');
+          return collection.find({
+            date: dateString
+          }).toArray(callback);
+        }
+      });
+    };
+
+    DataStorage.prototype.getDataFromIP = function(ip, callback) {
+      return this.getCollection(function(error, collection) {
+        if (error) {
+          return callback(error);
+        } else {
+          return collection.find({
+            ip: ip
+          }).toArray(callback);
+        }
+      });
+    };
+
+    DataStorage.prototype.getData = function(date, ip, callback) {
+      return this.getCollection(function(error, collection) {
+        var dateString;
+        if (error) {
+          return callback(error);
+        } else {
+          dateString = dateFormat(date, 'yyyy-mm-dd');
+          return collection.find({
+            date: dateString,
+            ip: ip
+          }).toArray(callback);
+        }
+      });
+    };
+
     return DataStorage;
 
   })();
@@ -293,8 +334,6 @@
     }
   });
 
-  netflowClient.bind(config.netflowPort);
-
   cronJob('0 0 1 * * *', function() {
     var date;
     date = new Date();
@@ -303,15 +342,15 @@
     return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
   });
 
-  cronJob('0 5 * * * *', function() {
+  cronJob('0 * * * * *', function() {
     var date;
     date = new Date();
-    date = date.setHours(date.getHours() - 1);
+    date = date.setMinutes(date.getMinutes() - 1);
     return dataStorage.upsertData(flowData.getDate(date), function(error, collection) {
       if (error) {
         return console.error("* Error on cron job: " + error);
       } else {
-        return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd/HH")) + " upserted to mongodb");
+        return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted to mongodb");
       }
     });
   });
@@ -361,14 +400,21 @@
     return res.render('hourly');
   });
 
-  app.listen(3000);
-
-  console.log("✿ flower");
-
-  console.log("* is listening on port " + (app.address().port) + " for web server");
-
-  console.log("* is listening on port " + (netflowClient.address().port) + " for netflow client");
-
-  console.log("* is running under " + app.settings.env + " environment");
+  dataStorage.getDataFromDate(Date(), function(data) {
+    var dailyData, ipData, _i, _len;
+    if (!err) {
+      dailyData = flowData.getDate(date, true);
+      for (_i = 0, _len = data.length; _i < _len; _i++) {
+        ipData = data[_i];
+        dailyData.ips[ipData.ip] = ipData.ipData;
+      }
+    }
+    netflowClient.bind(config.netflowPort);
+    app.listen(config.httpPort);
+    console.log("✿ flower");
+    console.log("* is listening on port " + (app.address().port) + " for web server");
+    console.log("* is listening on port " + (netflowClient.address().port) + " for netflow client");
+    return console.log("* is running under " + app.settings.env + " environment");
+  });
 
 }).call(this);

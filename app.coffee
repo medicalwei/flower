@@ -35,6 +35,26 @@ class DataStorage
         for ip, ipData of dailyData.ips
           collection.update {date: dateString, ip: ip}, {date: dateString, ip: ip, data: ipData}, {upsert: true}
         callback null, collection
+  getDataFromDate: (date, callback) ->
+    @getCollection (error, collection) ->
+      if error
+        callback error
+      else
+        dateString = dateFormat date, 'yyyy-mm-dd'
+        collection.find({date: dateString}).toArray(callback);
+  getDataFromIP: (ip, callback) ->
+    @getCollection (error, collection) ->
+      if error
+        callback error
+      else
+        collection.find({ip: ip}).toArray(callback);
+  getData: (date, ip, callback) ->
+    @getCollection (error, collection) ->
+      if error
+        callback error
+      else
+        dateString = dateFormat date, 'yyyy-mm-dd'
+        collection.find({date: dateString, ip: ip}).toArray(callback);
 
 dataStorage = new DataStorage(config.mongoHost, config.mongoPort)
 
@@ -168,8 +188,6 @@ netflowClient.on "message", (mesg, rinfo) ->
   catch err
     console.error "* Error receiving Netflow message: #{err}"
 
-netflowClient.bind config.netflowPort
-
 # cron jobs
 
 # daily works
@@ -179,15 +197,15 @@ cronJob '0 0 1 * * *', ->
   flowData.deleteDate date
   console.log "* Data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
 
-# hourly works
-cronJob '0 5 * * * *', ->
+# per minute works
+cronJob '0 * * * * *', ->
   date = new Date()
-  date = date.setHours date.getHours()-1 # get last hour
+  date = date.setMinutes date.getMinutes()-1 # get last minute
   dataStorage.upsertData flowData.getDate(date), (error, collection)->
     if error
       console.error "* Error on cron job: #{error}"
     else
-      console.log "* Data at #{dateFormat date, "yyyy-mm-dd/HH"} upserted to mongodb"
+      console.log "* Data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted to mongodb"
 
 # Routes
 
@@ -222,10 +240,17 @@ app.get '/:ip/:year/:month', (req, res) ->
 app.get '/:ip/:year/:month/:day', (req, res) ->
   res.render 'hourly'
 
-# Start listening
+# Restore values from database.
+dataStorage.getDataFromDate Date(), (data) ->
+  if not err
+    dailyData = flowData.getDate date, true
+    for ipData in data
+      dailyData.ips[ipData.ip] = ipData.ipData
 
-app.listen 3000
-console.log "✿ flower"
-console.log "* is listening on port #{app.address().port} for web server"
-console.log "* is listening on port #{netflowClient.address().port} for netflow client"
-console.log "* is running under #{app.settings.env} environment"
+  # then start listening
+  netflowClient.bind config.netflowPort
+  app.listen config.httpPort
+  console.log "✿ flower"
+  console.log "* is listening on port #{app.address().port} for web server"
+  console.log "* is listening on port #{netflowClient.address().port} for netflow client"
+  console.log "* is running under #{app.settings.env} environment"
