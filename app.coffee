@@ -176,7 +176,7 @@ cronJob '30 * * * * *', ->
     if error
       console.error "* Error on cron job: #{error}"
     else
-      console.log "* Data at #{dateFormat date, "yyyy-mm-dd/hh"} upserted to mongodb"
+      console.log "* Data at #{dateFormat date, "yyyy-mm-dd/HH"} upserted to mongodb"
 
 # Routes
 

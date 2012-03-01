@@ -283,7 +283,7 @@
       if (error) {
         return console.error("* Error on cron job: " + error);
       } else {
-        return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd/hh")) + " upserted to mongodb");
+        return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd/HH")) + " upserted to mongodb");
       }
     });
   });
