@@ -20,12 +20,20 @@ html
           div.well.sidebar-nav
             ul#nav.nav.nav-list
               li
-                a(href="/") You
+                a(href="/")
+                  i(class="icon-user")
+                  | You
               li
-                a(href="/banned") Banned users list
+                a(href="/banned")
+                  i(class="icon-minus-sign")
+                  | Banned users list
               li.nav-header TODO: Categories
               li
-                a Foo
+                a 
+                  i(class="icon-folder-close")
+                  | Foo
               li
-                a Bar
+                a 
+                  i(class="icon-folder-close")
+                  | Bar
         div.span9!=body
