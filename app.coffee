@@ -34,6 +34,7 @@ class DataStorage
         dateString = dateFormat dailyData.date, 'yyyy-mm-dd'
         for ipData, ip in dailyData.ips
           collection.update {date: dateString, ip: ip}, {date: dateString, ip: ip, data: ipData}, {upsert: true}
+        callback null, collection
 
 dataStorage = new DataStorage(config.mongoHost, config.mongoPort)
 
@@ -154,24 +155,28 @@ netflowClient.on "message", (mesg, rinfo) ->
         # TODO: do banning in packet receiving event
 
   catch err
-    console.error err
+    console.error "* Error receiving Netflow message: #{err}"
 
 netflowClient.bind config.netflowPort
 
 # cron jobs
 
 # daily works
-cronJob '5 0 0 * * *', ->
+cronJob '0 0 12 * * *', ->
   date = new Date()
-  date = date.setDate date.getHours()-1 # get last hour
-  dataStorage.upsertData flowData.getDate(date), ->
-    flowData.deleteDate date
+  date = date.setDate date.getDate()-1 # get last day
+  flowData.deleteDate date
+  console.log "* Data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
 
-# hourly works
-cronJob '5 0 1-23 * * *', ->
+# minutely works
+cronJob '30 * * * * *', ->
   date = new Date()
-  date = date.setDate date.getHours()-1 # get last hour
-  dataStorage.upsertData flowData.getDate(date), ->
+  date = date.setMinutes date.getMinutes()-1 # get last minute
+  dataStorage.upsertData flowData.getDate(date), (error, collection)->
+    if error
+      console.error "* Error on cron job: #{error}"
+    else
+      console.log "* Data at #{dateformat date, "yyyy-mm-dd/hh"} upserted to mongodb"
 
 # Routes
 
@@ -210,6 +215,6 @@ app.get '/:ip/:year/:month/:day', ->
 
 app.listen 3000
 console.log "✿ flower"
-console.log "* is listening on port %d for web server", app.address().port
-console.log "* is listening on port %d for netflow client", netflowClient.address().port
-console.log "* is running under %s environment", app.settings.env
+console.log "* is listening on port #{app.address().port} for web server"
+console.log "* is listening on port #{netflowClient.address().port} for netflow client"
+console.log "* is running under #{app.settings.env} environment"

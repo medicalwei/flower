@@ -48,16 +48,15 @@
 
     DataStorage.prototype.upsertData = function(dailyData, callback) {
       return this.getCollection(function(error, collection) {
-        var dateString, ip, ipData, _len, _ref, _results;
+        var dateString, ip, ipData, _len, _ref;
         if (error) {
           return callback(error);
         } else {
           dateString = dateFormat(dailyData.date, 'yyyy-mm-dd');
           _ref = dailyData.ips;
-          _results = [];
           for (ip = 0, _len = _ref.length; ip < _len; ip++) {
             ipData = _ref[ip];
-            _results.push(collection.update({
+            collection.update({
               date: dateString,
               ip: ip
             }, {
@@ -66,9 +65,9 @@
               data: ipData
             }, {
               upsert: true
-            }));
+            });
           }
-          return _results;
+          return callback(null, collection);
         }
       });
     };
@@ -262,26 +261,31 @@
         return _results;
       }
     } catch (err) {
-      return console.error(err);
+      return console.error("* Error receiving Netflow message: " + err);
     }
   });
 
   netflowClient.bind(config.netflowPort);
 
-  cronJob('5 0 0 * * *', function() {
+  cronJob('0 0 12 * * *', function() {
     var date;
     date = new Date();
-    date = date.setDate(date.getHours() - 1);
-    return dataStorage.upsertData(flowData.getDate(date), function() {
-      return flowData.deleteDate(date);
-    });
+    date = date.setDate(date.getDate() - 1);
+    flowData.deleteDate(date);
+    return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
   });
 
-  cronJob('5 0 1-23 * * *', function() {
+  cronJob('30 * * * * *', function() {
     var date;
     date = new Date();
-    date = date.setDate(date.getHours() - 1);
-    return dataStorage.upsertData(flowData.getDate(date), function() {});
+    date = date.setMinutes(date.getMinutes() - 1);
+    return dataStorage.upsertData(flowData.getDate(date), function(error, collection) {
+      if (error) {
+        return console.error("* Error on cron job: " + error);
+      } else {
+        return console.log("* Data at " + (dateformat(date, "yyyy-mm-dd/hh")) + " upserted to mongodb");
+      }
+    });
   });
 
   app.get('/', function(req, res) {
@@ -333,10 +337,10 @@
 
   console.log("✿ flower");
 
-  console.log("* is listening on port %d for web server", app.address().port);
+  console.log("* is listening on port " + (app.address().port) + " for web server");
 
-  console.log("* is listening on port %d for netflow client", netflowClient.address().port);
+  console.log("* is listening on port " + (netflowClient.address().port) + " for netflow client");
 
-  console.log("* is running under %s environment", app.settings.env);
+  console.log("* is running under " + app.settings.env + " environment");
 
 }).call(this);
