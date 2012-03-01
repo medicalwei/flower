@@ -48,13 +48,13 @@
 
     DataStorage.prototype.upsertData = function(dailyData, callback) {
       return this.getCollection(function(error, collection) {
-        var dateString, ip, ipData, _len, _ref;
+        var dateString, ip, ipData, _ref;
         if (error) {
           return callback(error);
         } else {
           dateString = dateFormat(dailyData.date, 'yyyy-mm-dd');
           _ref = dailyData.ips;
-          for (ip = 0, _len = _ref.length; ip < _len; ip++) {
+          for (ip in _ref) {
             ipData = _ref[ip];
             collection.update({
               date: dateString,

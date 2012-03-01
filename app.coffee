@@ -32,7 +32,7 @@ class DataStorage
         callback error
       else
         dateString = dateFormat dailyData.date, 'yyyy-mm-dd'
-        for ipData, ip in dailyData.ips
+        for ip, ipData of dailyData.ips
           collection.update {date: dateString, ip: ip}, {date: dateString, ip: ip, data: ipData}, {upsert: true}
         callback null, collection
 
