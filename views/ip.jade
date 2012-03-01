@@ -4,21 +4,19 @@ div.page-header
 div.row-fluid
   div.total.span8
     h2 Total
-    div.number
-      |=ipData.getTotalString()
-      | MiB
+    div.number #{ipData.getTotalString()} MiB
   div.updown.span4
     h2 Upload
-    div.number
-      |=ipData.getUploadString()
-      | MiB
+    div.number #{ipData.getUploadString()} MiB
     h2 Download
-    div.number
-      |=ipData.getDownloadString()
-      | MiB
+    div.number #{ipData.getDownloadString()} MiB
 div.row-fluid
   h2 Hourly status 
-  p TODO: use charts
-  ul
-    each hourData, hour in ipData.hourlyData.hours
-      li #{hour}: #{hourData.getTotal()}
+  noscript Please enable JavaScript for graph plotting.
+  div#graph
+  script
+    var plotData=!{JSON.stringify(ipData.hourlyData.getPlotData())};
+    $.plot($("#graph"), plotData, {
+        series: {stack: 0, lines: {show: false, steps: false}, bars: {show: true, barWidth: 0.6}},
+        xaxis: {tickSize: 1, tickDecimals: 0}
+      });

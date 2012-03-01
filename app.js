@@ -97,6 +97,18 @@
       return this.download += bytes;
     };
 
+    Data.prototype.getUploadString = function() {
+      return (this.upload / 1048576).toFixed(2);
+    };
+
+    Data.prototype.getDownloadString = function() {
+      return (this.download / 1048576).toFixed(2);
+    };
+
+    Data.prototype.getTotalString = function() {
+      return (this.getTotal() / 1048576).toFixed(2);
+    };
+
     return Data;
 
   })();
@@ -110,6 +122,26 @@
         this.hours[hour] = new Data();
       }
     }
+
+    HourlyData.prototype.getPlotData = function() {
+      var hour, hourData, r, _len, _ref;
+      r = [
+        {
+          label: 'download',
+          data: []
+        }, {
+          label: 'upload',
+          data: []
+        }
+      ];
+      _ref = this.hours;
+      for (hour = 0, _len = _ref.length; hour < _len; hour++) {
+        hourData = _ref[hour];
+        r[0].data[hour] = [hour, hourData.download / 1048576];
+        r[1].data[hour] = [hour, hourData.upload / 1048576];
+      }
+      return r;
+    };
 
     return HourlyData;
 

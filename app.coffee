@@ -51,17 +51,23 @@ class Data
   addDownload: (bytes) ->
     @download += bytes
   getUploadString: ->
-    (@upload/1048576).toPrecision(2)
+    (@upload/1048576).toFixed(2)
   getDownloadString: ->
-    (@download/1048576).toPrecision(2)
+    (@download/1048576).toFixed(2)
   getTotalString: ->
-    (@getTotal()/1048576).toPrecision(2)
+    (@getTotal()/1048576).toFixed(2)
 
 class HourlyData
   constructor: ->
     @hours = []
     for hour in [0..23]
       @hours[hour] = new Data()
+  getPlotData: ->
+    r=[{label: 'download', data: []}, {label: 'upload', data: []}]
+    for hourData,hour in @hours
+      r[0].data[hour] = [hour, hourData.download/1048576]
+      r[1].data[hour] = [hour, hourData.upload/1048576]
+    return r
 
 class IpData extends Data
   constructor: ->
