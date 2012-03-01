@@ -5,5 +5,5 @@ ul
   li Download: #{ipData.download}
 h2 Hourly usage
 ul
-  each hourData, hour in ipData.getHourlyData().getHours()
+  each hourData, hour in ipData.hourlyData.hours
     li #{hour}: #{hourData.getTotal()}
