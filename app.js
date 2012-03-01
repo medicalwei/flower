@@ -267,7 +267,7 @@
 
   netflowClient.bind(config.netflowPort);
 
-  cronJob('0 0 12 * * *', function() {
+  cronJob('0 0 1 * * *', function() {
     var date;
     date = new Date();
     date = date.setDate(date.getDate() - 1);
@@ -275,10 +275,10 @@
     return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
   });
 
-  cronJob('30 * * * * *', function() {
+  cronJob('0 5 * * * *', function() {
     var date;
     date = new Date();
-    date = date.setMinutes(date.getMinutes() - 1);
+    date = date.setHours(date.getHours() - 1);
     return dataStorage.upsertData(flowData.getDate(date), function(error, collection) {
       if (error) {
         return console.error("* Error on cron job: " + error);

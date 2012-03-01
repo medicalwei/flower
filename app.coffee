@@ -162,16 +162,16 @@ netflowClient.bind config.netflowPort
 # cron jobs
 
 # daily works
-cronJob '0 0 12 * * *', ->
+cronJob '0 0 1 * * *', ->
   date = new Date()
   date = date.setDate date.getDate()-1 # get last day
   flowData.deleteDate date
   console.log "* Data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
 
-# minutely works
-cronJob '30 * * * * *', ->
+# hourly works
+cronJob '0 5 * * * *', ->
   date = new Date()
-  date = date.setMinutes date.getMinutes()-1 # get last minute
+  date = date.setHours date.getHours()-1 # get last hour
   dataStorage.upsertData flowData.getDate(date), (error, collection)->
     if error
       console.error "* Error on cron job: #{error}"
