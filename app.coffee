@@ -31,7 +31,7 @@ class DataStorage
       if error
         callback error
       else
-        dateString = dateFormat date, 'yyyy-mm-dd'
+        dateString = dateFormat dailyData.date, 'yyyy-mm-dd'
         for ipData, ip in dailyData.ips
           collection.update {date: dateString, ip: ip}, {date: dateString, ip: ip, data: ipData}, {upsert: true}
 

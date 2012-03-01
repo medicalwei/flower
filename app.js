@@ -52,7 +52,7 @@
         if (error) {
           return callback(error);
         } else {
-          dateString = dateFormat(date, 'yyyy-mm-dd');
+          dateString = dateFormat(dailyData.date, 'yyyy-mm-dd');
           _ref = dailyData.ips;
           _results = [];
           for (ip = 0, _len = _ref.length; ip < _len; ip++) {
