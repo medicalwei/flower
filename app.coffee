@@ -50,6 +50,12 @@ class Data
     @upload += bytes
   addDownload: (bytes) ->
     @download += bytes
+  getUploadString: ->
+    (@upload/1048576).toPrecision(2)
+  getDownloadString: ->
+    (@download/1048576).toPrecision(2)
+  getTotalString: ->
+    (@getTotal()/1048576).toPrecision(2)
 
 class HourlyData
   constructor: ->
