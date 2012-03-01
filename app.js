@@ -355,7 +355,7 @@
       flowData.deleteDate(date);
       return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
     });
-    return cronJob('0 * * * * *', function() {
+    return cronJob('0 */6 * * * *', function() {
       var date;
       date = new Date;
       date = date.setMinutes(date.getMinutes() - 1);

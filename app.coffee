@@ -208,8 +208,8 @@ setupCronJobs = ->
     flowData.deleteDate date
     console.log "* Data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
 
-  # per minute works
-  cronJob '0 * * * * *', ->
+  # per 10 minute works
+  cronJob '0 */6 * * * *', ->
     date = new Date
     date = date.setMinutes date.getMinutes()-1 # get last minute
     dataStorage.upsertData flowData.getDate(date), (error, collection)->
