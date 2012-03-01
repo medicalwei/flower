@@ -169,6 +169,7 @@ cronJob '5 0 0 * * *', ->
 
 # hourly works
 cronJob '5 0 1-23 * * *', ->
+  date = new Date()
   date = date.setDate date.getHours()-1 # get last hour
   dataStorage.upsertData flowData.getDate(date), ->
 

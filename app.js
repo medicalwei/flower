@@ -279,6 +279,7 @@
 
   cronJob('5 0 1-23 * * *', function() {
     var date;
+    date = new Date();
     date = date.setDate(date.getHours() - 1);
     return dataStorage.upsertData(flowData.getDate(date), function() {});
   });
