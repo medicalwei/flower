@@ -2,6 +2,10 @@ body {
   padding-top: 60px;
 } 
 
+.sidebar-nav {
+  padding: 9px 0;
+}
+
 div.total div.number {
   font-size: 5em;
   line-height: 1.2em;
