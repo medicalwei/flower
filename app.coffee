@@ -64,10 +64,10 @@ class IpData extends Data
     config.banningRule this
   addUpload: (date, bytes) ->
     super bytes
-    @hourlyData.hour[date.getHours()].addUpload(bytes)
+    @hourlyData.hours[date.getHours()].addUpload(bytes)
   addDownload: (date, bytes) ->
     super bytes
-    @hourlyData.hour[date.getHours()].addDownload(bytes)
+    @hourlyData.hours[date.getHours()].addDownload(bytes)
 
 class DailyData
   constructor: (date)->
@@ -146,10 +146,10 @@ netflowClient.on "message", (mesg, rinfo) ->
           continue
 
         continue if not config.ipRule ip
-        ip = dailyData.getIp ip, true
+        ipData = dailyData.getIp ip, true
         switch status
-          when "upload" then ip.addUpload date, bytes
-          when "download" then ip.addDownload date, bytes
+          when "upload" then ipData.addUpload date, bytes
+          when "download" then ipData.addDownload date, bytes
 
         # TODO: do banning in packet receiving event
 

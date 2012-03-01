@@ -131,12 +131,12 @@
 
     IpData.prototype.addUpload = function(date, bytes) {
       IpData.__super__.addUpload.call(this, bytes);
-      return this.hourlyData.hour[date.getHours()].addUpload(bytes);
+      return this.hourlyData.hours[date.getHours()].addUpload(bytes);
     };
 
     IpData.prototype.addDownload = function(date, bytes) {
       IpData.__super__.addDownload.call(this, bytes);
-      return this.hourlyData.hour[date.getHours()].addDownload(bytes);
+      return this.hourlyData.hours[date.getHours()].addDownload(bytes);
     };
 
     return IpData;
@@ -225,7 +225,7 @@
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, dailyData, date, flow, ip, packet, status, _i, _len, _ref, _results;
+    var bytes, dailyData, date, flow, ip, ipData, packet, status, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
       date = new Date();
@@ -247,13 +247,13 @@
             continue;
           }
           if (!config.ipRule(ip)) continue;
-          ip = dailyData.getIp(ip, true);
+          ipData = dailyData.getIp(ip, true);
           switch (status) {
             case "upload":
-              _results.push(ip.addUpload(date, bytes));
+              _results.push(ipData.addUpload(date, bytes));
               break;
             case "download":
-              _results.push(ip.addDownload(date, bytes));
+              _results.push(ipData.addDownload(date, bytes));
               break;
             default:
               _results.push(void 0);
