@@ -15,6 +15,7 @@ div.updown div.number {
 }
 
 #graph {
+  margin-top: 10px;
   height: 350px;
-  width: 90%;
+  width: 100%;
 }
