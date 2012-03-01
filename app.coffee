@@ -13,33 +13,36 @@ mongo = require 'mongodb'
 
 app = module.exports = express.createServer()
 
-class UserStorage
+# mongodb database
+
+class DataStorage
   constructor: (host, port) ->
     server = new mongo.Server host, port, {auto_reconnect: true}, {}
     @db = new mongo.Db 'flower', server
-    @db.open ->
-      # does nothing
+    @db.open -> # does nothing
   getCollection: (callback) ->
     @db.collection 'history', (error, collection) ->
       if error 
         callback error
       else 
         callback null, collection
-  createData: (dailyData, callback) ->
+  upsertData: (dailyData, callback) ->
     @getCollection (error, collection) ->
       if error
         callback error
       else
-        # TODO
+        dateString = dateFormat date, 'yyyy-mm-dd'
+        for ipData, ip in dailyData.ips
+          collection.update {date: dateString, ip: ip}, {date: dateString, ip: ip, data: ipData}, {upsert: true}
 
+dataStorage = new DataStorage(config.mongoHost, config.mongoPort)
+
+# classes
+            
 class Data
   constructor: ->
     @upload = 0
     @download = 0
-  getUpload: ->
-    @upload
-  getDownload: ->
-    @download
   getTotal: ->
     @upload + @download
   addUpload: (bytes) ->
@@ -52,41 +55,41 @@ class HourlyData
     @hours = []
     for hour in [0..23]
       @hours[hour] = new Data()
-  getHour: (hour) ->
-    @hours[hour]
-  getHours: ->
-    @hours
 
 class IpData extends Data
   constructor: ->
     super
     @hourlyData = new HourlyData
-  getHourlyData: ->
-    @hourlyData
   isBanned: ->
     config.banningRule this
   addUpload: (date, bytes) ->
     super bytes
-    @hourlyData.getHour(date.getHours()).addUpload(bytes)
+    @hourlyData.hour[date.getHours()].addUpload(bytes)
   addDownload: (date, bytes) ->
     super bytes
-    @hourlyData.getHour(date.getHours()).addDownload(bytes)
+    @hourlyData.hour[date.getHours()].addDownload(bytes)
 
 class DailyData
   constructor: (date)->
     @ips = {}
     @date = date
-  getIp: (ip) ->
+  getIp: (ip, createNew=false) ->
     if not (ip of @ips)
-      @ips[ip] = new IpData
+      if createNew
+        @ips[ip] = new IpData
+      else
+        return null
     @ips[ip]
 
 class FlowData
   constructor: -> @days = {}
-  getDate: (date) ->
+  getDate: (date, createNew=false) ->
     dateString = dateFormat date, 'yyyy-mm-dd'
     if not (dateString of @days)
-      @days[dateString] = new DailyData(date)
+      if createNew
+        @days[dateString] = new DailyData(date)
+      else
+        return null
     @days[dateString]
   deleteDate: (date)->
     dateString = dateFormat date, 'yyyy-mm-dd'
@@ -119,7 +122,7 @@ netflowClient.on "message", (mesg, rinfo) ->
   try
     packet = new NetflowPacket mesg
     date = new Date()
-    dailyData = flowData.getDate(date)
+    dailyData = flowData.getDate date, true
     if packet.header.version == 5
       for flow in packet.v5Flows
         if flow.input == config.outboundInterface
@@ -143,7 +146,7 @@ netflowClient.on "message", (mesg, rinfo) ->
           continue
 
         continue if not config.ipRule ip
-        ip = dailyData.getIp ip
+        ip = dailyData.getIp ip, true
         switch status
           when "upload" then ip.addUpload date, bytes
           when "download" then ip.addDownload date, bytes
@@ -155,10 +158,19 @@ netflowClient.on "message", (mesg, rinfo) ->
 
 netflowClient.bind config.netflowPort
 
-# cron job
+# cron jobs
 
-cronJob '0 0 0 * * *', ->
-  list = users.rotate()
+# daily works
+cronJob '5 0 0 * * *', ->
+  date = new Date()
+  date = date.setDate date.getHour()-1 # get last hour
+  dataStorage.upsertData flowData.getDate(date), ->
+    flowData.deleteDate date
+
+# hourly works
+cronJob '5 0 1-23 * * *', ->
+  date = date.setDate date.getHour()-1 # get last hour
+  dataStorage.upsertData flowData.getDate(date), ->
 
 # Routes
 

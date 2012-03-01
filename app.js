@@ -5,7 +5,7 @@
 */
 
 (function() {
-  var DailyData, Data, FlowData, HourlyData, IpData, NetflowPacket, UserStorage, app, config, cronJob, dateFormat, dgram, express, flowData, mongo, netflowClient,
+  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, express, flowData, mongo, netflowClient,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -25,9 +25,9 @@
 
   app = module.exports = express.createServer();
 
-  UserStorage = (function() {
+  DataStorage = (function() {
 
-    function UserStorage(host, port) {
+    function DataStorage(host, port) {
       var server;
       server = new mongo.Server(host, port, {
         auto_reconnect: true
@@ -36,7 +36,7 @@
       this.db.open(function() {});
     }
 
-    UserStorage.prototype.getCollection = function(callback) {
+    DataStorage.prototype.getCollection = function(callback) {
       return this.db.collection('history', function(error, collection) {
         if (error) {
           return callback(error);
@@ -46,19 +46,38 @@
       });
     };
 
-    UserStorage.prototype.createData = function(dailyData, callback) {
+    DataStorage.prototype.upsertData = function(dailyData, callback) {
       return this.getCollection(function(error, collection) {
+        var dateString, ip, ipData, _len, _ref, _results;
         if (error) {
           return callback(error);
         } else {
-
+          dateString = dateFormat(date, 'yyyy-mm-dd');
+          _ref = dailyData.ips;
+          _results = [];
+          for (ip = 0, _len = _ref.length; ip < _len; ip++) {
+            ipData = _ref[ip];
+            _results.push(collection.update({
+              date: dateString,
+              ip: ip
+            }, {
+              date: dateString,
+              ip: ip,
+              data: ipData
+            }, {
+              upsert: true
+            }));
+          }
+          return _results;
         }
       });
     };
 
-    return UserStorage;
+    return DataStorage;
 
   })();
+
+  dataStorage = new DataStorage(config.mongoHost, config.mongoPort);
 
   Data = (function() {
 
@@ -66,14 +85,6 @@
       this.upload = 0;
       this.download = 0;
     }
-
-    Data.prototype.getUpload = function() {
-      return this.upload;
-    };
-
-    Data.prototype.getDownload = function() {
-      return this.download;
-    };
 
     Data.prototype.getTotal = function() {
       return this.upload + this.download;
@@ -101,14 +112,6 @@
       }
     }
 
-    HourlyData.prototype.getHour = function(hour) {
-      return this.hours[hour];
-    };
-
-    HourlyData.prototype.getHours = function() {
-      return this.hours;
-    };
-
     return HourlyData;
 
   })();
@@ -122,22 +125,18 @@
       this.hourlyData = new HourlyData;
     }
 
-    IpData.prototype.getHourlyData = function() {
-      return this.hourlyData;
-    };
-
     IpData.prototype.isBanned = function() {
       return config.banningRule(this);
     };
 
     IpData.prototype.addUpload = function(date, bytes) {
       IpData.__super__.addUpload.call(this, bytes);
-      return this.hourlyData.getHour(date.getHours()).addUpload(bytes);
+      return this.hourlyData.hour[date.getHours()].addUpload(bytes);
     };
 
     IpData.prototype.addDownload = function(date, bytes) {
       IpData.__super__.addDownload.call(this, bytes);
-      return this.hourlyData.getHour(date.getHours()).addDownload(bytes);
+      return this.hourlyData.hour[date.getHours()].addDownload(bytes);
     };
 
     return IpData;
@@ -151,8 +150,15 @@
       this.date = date;
     }
 
-    DailyData.prototype.getIp = function(ip) {
-      if (!(ip in this.ips)) this.ips[ip] = new IpData;
+    DailyData.prototype.getIp = function(ip, createNew) {
+      if (createNew == null) createNew = false;
+      if (!(ip in this.ips)) {
+        if (createNew) {
+          this.ips[ip] = new IpData;
+        } else {
+          return null;
+        }
+      }
       return this.ips[ip];
     };
 
@@ -166,10 +172,17 @@
       this.days = {};
     }
 
-    FlowData.prototype.getDate = function(date) {
+    FlowData.prototype.getDate = function(date, createNew) {
       var dateString;
+      if (createNew == null) createNew = false;
       dateString = dateFormat(date, 'yyyy-mm-dd');
-      if (!(dateString in this.days)) this.days[dateString] = new DailyData(date);
+      if (!(dateString in this.days)) {
+        if (createNew) {
+          this.days[dateString] = new DailyData(date);
+        } else {
+          return null;
+        }
+      }
       return this.days[dateString];
     };
 
@@ -216,7 +229,7 @@
     try {
       packet = new NetflowPacket(mesg);
       date = new Date();
-      dailyData = flowData.getDate(date);
+      dailyData = flowData.getDate(date, true);
       if (packet.header.version === 5) {
         _ref = packet.v5Flows;
         _results = [];
@@ -234,7 +247,7 @@
             continue;
           }
           if (!config.ipRule(ip)) continue;
-          ip = dailyData.getIp(ip);
+          ip = dailyData.getIp(ip, true);
           switch (status) {
             case "upload":
               _results.push(ip.addUpload(date, bytes));
@@ -255,9 +268,19 @@
 
   netflowClient.bind(config.netflowPort);
 
-  cronJob('0 0 0 * * *', function() {
-    var list;
-    return list = users.rotate();
+  cronJob('5 0 0 * * *', function() {
+    var date;
+    date = new Date();
+    date = date.setDate(date.getHour() - 1);
+    return dataStorage.upsertData(flowData.getDate(date), function() {
+      return flowData.deleteDate(date);
+    });
+  });
+
+  cronJob('5 0 1-23 * * *', function() {
+    var date;
+    date = date.setDate(date.getHour() - 1);
+    return dataStorage.upsertData(flowData.getDate(date), function() {});
   });
 
   app.get('/', function(req, res) {
