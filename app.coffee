@@ -16,10 +16,10 @@ app = module.exports = express.createServer()
 # mongodb database
 
 class DataStorage
-  constructor: (host, port) ->
+  constructor: (host, port, callback) ->
     server = new mongo.Server host, port, {auto_reconnect: true}, {}
     @db = new mongo.Db 'flower', server
-    @db.open -> # does nothing
+    @db.open callback
   getCollection: (callback) ->
     @db.collection 'history', (error, collection) ->
       if error 
@@ -54,16 +54,18 @@ class DataStorage
         callback error
       else
         dateString = dateFormat date, 'yyyy-mm-dd'
-        collection.find({date: dateString, ip: ip}).toArray(callback);
-
-dataStorage = new DataStorage(config.mongoHost, config.mongoPort)
+        collection.findOne({date: dateString, ip: ip}, callback);
 
 # classes
             
 class Data
-  constructor: ->
-    @upload = 0
-    @download = 0
+  constructor: (data) ->
+    if data
+      @upload = data.upload
+      @download = data.download
+    else
+      @upload = 0
+      @download = 0
   getTotal: ->
     @upload + @download
   addUpload: (bytes) ->
@@ -78,10 +80,14 @@ class Data
     (@getTotal()/1048576).toFixed(2)
 
 class HourlyData
-  constructor: ->
+  constructor: (data) ->
     @hours = []
-    for hour in [0..23]
-      @hours[hour] = new Data()
+    if data
+      for hour in [0..23]
+        @hours[hour] = new Data data.hours[hour]
+    else
+      for hour in [0..23]
+        @hours[hour] = new Data
   getPlotData: ->
     r=[{label: 'download', data: []}, {label: 'upload', data: []}]
     for hourData,hour in @hours
@@ -90,9 +96,12 @@ class HourlyData
     return r
 
 class IpData extends Data
-  constructor: ->
-    super
-    @hourlyData = new HourlyData
+  constructor: (data) ->
+    super data
+    if data
+      @hourlyData = new HourlyData data.hourlyData
+    else
+      @hourlyData = new HourlyData
   isBanned: ->
     config.banningRule this
   addUpload: (date, bytes) ->
@@ -153,7 +162,7 @@ netflowClient = dgram.createSocket "udp4"
 netflowClient.on "message", (mesg, rinfo) ->
   try
     packet = new NetflowPacket mesg
-    date = new Date()
+    date = new Date
     dailyData = flowData.getDate date, true
     if packet.header.version == 5
       for flow in packet.v5Flows
@@ -190,22 +199,24 @@ netflowClient.on "message", (mesg, rinfo) ->
 
 # cron jobs
 
-# daily works
-cronJob '0 0 1 * * *', ->
-  date = new Date()
-  date = date.setDate date.getDate()-1 # get last day
-  flowData.deleteDate date
-  console.log "* Data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
+setupCronJobs = ->
 
-# per minute works
-cronJob '0 * * * * *', ->
-  date = new Date()
-  date = date.setMinutes date.getMinutes()-1 # get last minute
-  dataStorage.upsertData flowData.getDate(date), (error, collection)->
-    if error
-      console.error "* Error on cron job: #{error}"
-    else
-      console.log "* Data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted to mongodb"
+  # daily works
+  cronJob '0 0 1 * * *', ->
+    date = new Date
+    date = date.setDate date.getDate()-1 # get last day
+    flowData.deleteDate date
+    console.log "* Data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
+
+  # per minute works
+  cronJob '0 * * * * *', ->
+    date = new Date
+    date = date.setMinutes date.getMinutes()-1 # get last minute
+    dataStorage.upsertData flowData.getDate(date), (error, collection)->
+      if error
+        console.error "* Error on cron job: #{error}"
+      else
+        console.log "* Data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted to mongodb"
 
 # Routes
 
@@ -227,7 +238,7 @@ app.get '/banned', (req, res) ->
 
 app.get '/:ip', (req, res) ->
   ip = req.params.ip
-  date = Date() # assuming today if no prompt.
+  date = new Date # assuming today if no prompt.
   if not config.ipRule ip
     res.redirect '/category'
     return
@@ -240,17 +251,21 @@ app.get '/:ip/:year/:month', (req, res) ->
 app.get '/:ip/:year/:month/:day', (req, res) ->
   res.render 'hourly'
 
-# Restore values from database.
-dataStorage.getDataFromDate Date(), (data) ->
-  if not err
-    dailyData = flowData.getDate date, true
-    for ipData in data
-      dailyData.ips[ipData.ip] = ipData.ipData
-
-  # then start listening
-  netflowClient.bind config.netflowPort
-  app.listen config.httpPort
-  console.log "✿ flower"
-  console.log "* is listening on port #{app.address().port} for web server"
-  console.log "* is listening on port #{netflowClient.address().port} for netflow client"
-  console.log "* is running under #{app.settings.env} environment"
+# Restore values from database. Do it when database is set up.
+dataStorage = new DataStorage config.mongoHost, config.mongoPort, ->
+  launchDate = new Date
+  dataStorage.getDataFromDate launchDate, (error, data) ->
+    if not error
+      dailyData = flowData.getDate launchDate, true
+      for ipData in data
+        dailyData.ips[ipData.ip] = new IpData(ipData.data)
+  
+    # then start listening
+    netflowClient.bind config.netflowPort
+    app.listen config.httpPort
+    console.log "✿ flower"
+    console.log "* is listening on port #{app.address().port} for web server"
+    console.log "* is listening on port #{netflowClient.address().port} for netflow client"
+    console.log "* is running under #{app.settings.env} environment"
+  
+    setupCronJobs()

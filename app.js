@@ -5,7 +5,7 @@
 */
 
 (function() {
-  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, express, flowData, mongo, netflowClient,
+  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, express, flowData, mongo, netflowClient, setupCronJobs,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -27,13 +27,13 @@
 
   DataStorage = (function() {
 
-    function DataStorage(host, port) {
+    function DataStorage(host, port, callback) {
       var server;
       server = new mongo.Server(host, port, {
         auto_reconnect: true
       }, {});
       this.db = new mongo.Db('flower', server);
-      this.db.open(function() {});
+      this.db.open(callback);
     }
 
     DataStorage.prototype.getCollection = function(callback) {
@@ -105,10 +105,10 @@
           return callback(error);
         } else {
           dateString = dateFormat(date, 'yyyy-mm-dd');
-          return collection.find({
+          return collection.findOne({
             date: dateString,
             ip: ip
-          }).toArray(callback);
+          }, callback);
         }
       });
     };
@@ -117,13 +117,16 @@
 
   })();
 
-  dataStorage = new DataStorage(config.mongoHost, config.mongoPort);
-
   Data = (function() {
 
-    function Data() {
-      this.upload = 0;
-      this.download = 0;
+    function Data(data) {
+      if (data) {
+        this.upload = data.upload;
+        this.download = data.download;
+      } else {
+        this.upload = 0;
+        this.download = 0;
+      }
     }
 
     Data.prototype.getTotal = function() {
@@ -156,11 +159,17 @@
 
   HourlyData = (function() {
 
-    function HourlyData() {
+    function HourlyData(data) {
       var hour;
       this.hours = [];
-      for (hour = 0; hour <= 23; hour++) {
-        this.hours[hour] = new Data();
+      if (data) {
+        for (hour = 0; hour <= 23; hour++) {
+          this.hours[hour] = new Data(data.hours[hour]);
+        }
+      } else {
+        for (hour = 0; hour <= 23; hour++) {
+          this.hours[hour] = new Data;
+        }
       }
     }
 
@@ -192,9 +201,13 @@
 
     __extends(IpData, _super);
 
-    function IpData() {
-      IpData.__super__.constructor.apply(this, arguments);
-      this.hourlyData = new HourlyData;
+    function IpData(data) {
+      IpData.__super__.constructor.call(this, data);
+      if (data) {
+        this.hourlyData = new HourlyData(data.hourlyData);
+      } else {
+        this.hourlyData = new HourlyData;
+      }
     }
 
     IpData.prototype.isBanned = function() {
@@ -296,7 +309,7 @@
     var bytes, dailyData, date, flow, ip, ipData, packet, status, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
-      date = new Date();
+      date = new Date;
       dailyData = flowData.getDate(date, true);
       if (packet.header.version === 5) {
         _ref = packet.v5Flows;
@@ -334,26 +347,27 @@
     }
   });
 
-  cronJob('0 0 1 * * *', function() {
-    var date;
-    date = new Date();
-    date = date.setDate(date.getDate() - 1);
-    flowData.deleteDate(date);
-    return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
-  });
-
-  cronJob('0 * * * * *', function() {
-    var date;
-    date = new Date();
-    date = date.setMinutes(date.getMinutes() - 1);
-    return dataStorage.upsertData(flowData.getDate(date), function(error, collection) {
-      if (error) {
-        return console.error("* Error on cron job: " + error);
-      } else {
-        return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted to mongodb");
-      }
+  setupCronJobs = function() {
+    cronJob('0 0 1 * * *', function() {
+      var date;
+      date = new Date;
+      date = date.setDate(date.getDate() - 1);
+      flowData.deleteDate(date);
+      return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
     });
-  });
+    return cronJob('0 * * * * *', function() {
+      var date;
+      date = new Date;
+      date = date.setMinutes(date.getMinutes() - 1);
+      return dataStorage.upsertData(flowData.getDate(date), function(error, collection) {
+        if (error) {
+          return console.error("* Error on cron job: " + error);
+        } else {
+          return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted to mongodb");
+        }
+      });
+    });
+  };
 
   app.get('/', function(req, res) {
     var remoteIp;
@@ -380,7 +394,7 @@
   app.get('/:ip', function(req, res) {
     var date, ip, ipData;
     ip = req.params.ip;
-    date = Date();
+    date = new Date;
     if (!config.ipRule(ip)) {
       res.redirect('/category');
       return;
@@ -400,21 +414,26 @@
     return res.render('hourly');
   });
 
-  dataStorage.getDataFromDate(Date(), function(data) {
-    var dailyData, ipData, _i, _len;
-    if (!err) {
-      dailyData = flowData.getDate(date, true);
-      for (_i = 0, _len = data.length; _i < _len; _i++) {
-        ipData = data[_i];
-        dailyData.ips[ipData.ip] = ipData.ipData;
+  dataStorage = new DataStorage(config.mongoHost, config.mongoPort, function() {
+    var launchDate;
+    launchDate = new Date;
+    return dataStorage.getDataFromDate(launchDate, function(error, data) {
+      var dailyData, ipData, _i, _len;
+      if (!error) {
+        dailyData = flowData.getDate(launchDate, true);
+        for (_i = 0, _len = data.length; _i < _len; _i++) {
+          ipData = data[_i];
+          dailyData.ips[ipData.ip] = new IpData(ipData.data);
+        }
       }
-    }
-    netflowClient.bind(config.netflowPort);
-    app.listen(config.httpPort);
-    console.log("✿ flower");
-    console.log("* is listening on port " + (app.address().port) + " for web server");
-    console.log("* is listening on port " + (netflowClient.address().port) + " for netflow client");
-    return console.log("* is running under " + app.settings.env + " environment");
+      netflowClient.bind(config.netflowPort);
+      app.listen(config.httpPort);
+      console.log("✿ flower");
+      console.log("* is listening on port " + (app.address().port) + " for web server");
+      console.log("* is listening on port " + (netflowClient.address().port) + " for netflow client");
+      console.log("* is running under " + app.settings.env + " environment");
+      return setupCronJobs();
+    });
   });
 
 }).call(this);
