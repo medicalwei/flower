@@ -243,14 +243,17 @@ app.get '/category/:category', (req, res) ->
 app.get '/banned', (req, res) ->
   res.render 'banned'
 
-app.get '/:ip', (req, res) ->
+app.get '/:ip', (req, res, next) ->
   ip = req.params.ip
   date = new Date # assuming today if no prompt.
   if not config.ipRule ip
     res.redirect '/category'
     return
   ipData = flowData.getDate(date).getIp(ip)
-  res.render 'ip', { ip: ip, ipData: ipData }
+  if ipData
+    res.render 'ip', { ip: ip, ipData: ipData }
+  else
+    next()
 
 app.get '/:ip/:year/:month', (req, res) ->
   res.render 'daily'

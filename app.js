@@ -395,7 +395,7 @@
     return res.render('banned');
   });
 
-  app.get('/:ip', function(req, res) {
+  app.get('/:ip', function(req, res, next) {
     var date, ip, ipData;
     ip = req.params.ip;
     date = new Date;
@@ -404,10 +404,14 @@
       return;
     }
     ipData = flowData.getDate(date).getIp(ip);
-    return res.render('ip', {
-      ip: ip,
-      ipData: ipData
-    });
+    if (ipData) {
+      return res.render('ip', {
+        ip: ip,
+        ipData: ipData
+      });
+    } else {
+      return next();
+    }
   });
 
   app.get('/:ip/:year/:month', function(req, res) {
