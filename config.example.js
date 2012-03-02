@@ -3,7 +3,7 @@ flower configurations
 */
 
 // the web viewer title
-// exports.siteName = "Dormitory flow";
+exports.siteName = "Dormitory flow";
 
 // Ports
 exports.netflowPort = 9991;

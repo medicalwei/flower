@@ -369,6 +369,10 @@
     });
   };
 
+  global.views = {
+    siteName: config.siteName
+  };
+
   app.get('/', function(req, res) {
     var remoteIp;
     remoteIp = req.connection.remoteAddress;

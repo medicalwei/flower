@@ -218,6 +218,13 @@ setupCronJobs = ->
       else
         console.log "* data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted to mongodb"
 
+# Some global variables used for view
+
+global.views = {
+  siteName: config.siteName
+  # TODO sidebar: 
+}
+
 # Routes
 
 app.get '/', (req, res) ->
