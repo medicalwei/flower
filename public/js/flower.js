@@ -25,19 +25,19 @@
         ticks: binaryTickGenerator
       }
     });
-    window.previousPoint = null;
+    window.tooltipPoint = null;
     return $("#graph").bind("plothover", function(event, pos, item) {
       var idx, total;
       if (item) {
-        if (window.previousPoint !== item.dataIndex) {
-          window.previousPoint = item.dataIndex;
+        if (window.tooltipPoint !== item.dataIndex) {
+          window.tooltipPoint = item.dataIndex;
           $("#tooltip").remove();
           idx = item.dataIndex;
           total = plotData[0].data[idx][1] + plotData[1].data[idx][1];
           return showTooltip(item.pageX, $("#graph").offset().top, "" + (total.toFixed(2)) + " MiB");
         }
       } else {
-        window.previousPoint = null;
+        window.tooltipPoint = null;
         return $("#tooltip").remove();
       }
     });

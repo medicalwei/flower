@@ -5,7 +5,7 @@
 */
 
 (function() {
-  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, express, flowData, mongo, netflowClient, setupCronJobs,
+  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, express, flowData, launch, mongo, netflowClient, onDatabaseSetup, setupCronJobs,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -343,7 +343,7 @@
         return _results;
       }
     } catch (err) {
-      return console.error("* Error receiving Netflow message: " + err);
+      return console.error("* error receiving Netflow message: " + err);
     }
   });
 
@@ -353,7 +353,7 @@
       date = new Date;
       date = date.setDate(date.getDate() - 1);
       flowData.deleteDate(date);
-      return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
+      return console.log("* data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
     });
     return cronJob('0 */10 * * * *', function() {
       var date;
@@ -361,9 +361,9 @@
       date = date.setMinutes(date.getMinutes() - 1);
       return dataStorage.upsertData(flowData.getDate(date), function(error, collection) {
         if (error) {
-          return console.error("* Error on cron job: " + error);
+          return console.error("* error on cron job: " + error);
         } else {
-          return console.log("* Data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted to mongodb");
+          return console.log("* data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted to mongodb");
         }
       });
     });
@@ -414,7 +414,7 @@
     return res.render('hourly');
   });
 
-  dataStorage = new DataStorage(config.mongoHost, config.mongoPort, function() {
+  onDatabaseSetup = function() {
     var launchDate;
     dataStorage.getCollection(function(error, collection) {
       if (!error) {
@@ -434,14 +434,20 @@
           dailyData.ips[ipData.ip] = new IpData(ipData.data);
         }
       }
-      netflowClient.bind(config.netflowPort);
-      app.listen(config.httpPort);
-      console.log("✿ flower");
-      console.log("* is listening on port " + (app.address().port) + " for web server");
-      console.log("* is listening on port " + (netflowClient.address().port) + " for netflow client");
-      console.log("* is running under " + app.settings.env + " environment");
-      return setupCronJobs();
+      return launch();
     });
-  });
+  };
+
+  launch = function() {
+    setupCronJobs();
+    netflowClient.bind(config.netflowPort);
+    app.listen(config.httpPort);
+    console.log("✿ flower");
+    console.log("* running under " + app.settings.env + " environment");
+    console.log("* listening on port " + (app.address().port) + " for web server");
+    return console.log("* listening on port " + (netflowClient.address().port) + " for netflow client");
+  };
+
+  dataStorage = new DataStorage(config.mongoHost, config.mongoPort, onDatabaseSetup);
 
 }).call(this);

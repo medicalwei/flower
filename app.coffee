@@ -195,7 +195,7 @@ netflowClient.on "message", (mesg, rinfo) ->
         # TODO: do banning in packet receiving event
 
   catch err
-    console.error "* Error receiving Netflow message: #{err}"
+    console.error "* error receiving Netflow message: #{err}"
 
 # cron jobs
 
@@ -206,7 +206,7 @@ setupCronJobs = ->
     date = new Date
     date = date.setDate date.getDate()-1 # get last day
     flowData.deleteDate date
-    console.log "* Data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
+    console.log "* data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
 
   # per 10 minute works
   cronJob '0 */10 * * * *', ->
@@ -214,9 +214,9 @@ setupCronJobs = ->
     date = date.setMinutes date.getMinutes()-1 # get last minute
     dataStorage.upsertData flowData.getDate(date), (error, collection)->
       if error
-        console.error "* Error on cron job: #{error}"
+        console.error "* error on cron job: #{error}"
       else
-        console.log "* Data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted to mongodb"
+        console.log "* data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted to mongodb"
 
 # Routes
 
@@ -251,24 +251,34 @@ app.get '/:ip/:year/:month', (req, res) ->
 app.get '/:ip/:year/:month/:day', (req, res) ->
   res.render 'hourly'
 
-# Restore values from database. Do it when database is set up.
-dataStorage = new DataStorage config.mongoHost, config.mongoPort, ->
+# Restore values from database, and launch the system.
+
+onDatabaseSetup = ->
   dataStorage.getCollection (error, collection) ->
     if not error
       collection.ensureIndex {ip: 1, date: -1}
   launchDate = new Date
   dataStorage.getDataFromDate launchDate, (error, data) ->
+    # i think we should tolerant error here.
     if not error
       dailyData = flowData.getDate launchDate, true
       for ipData in data
         dailyData.ips[ipData.ip] = new IpData(ipData.data)
-  
-    # then start listening
-    netflowClient.bind config.netflowPort
-    app.listen config.httpPort
-    console.log "✿ flower"
-    console.log "* is listening on port #{app.address().port} for web server"
-    console.log "* is listening on port #{netflowClient.address().port} for netflow client"
-    console.log "* is running under #{app.settings.env} environment"
-  
-    setupCronJobs()
+
+    # then launch
+    launch()
+
+launch = ->
+  # begin cron jobs
+  setupCronJobs()
+
+  # start listening
+  netflowClient.bind config.netflowPort
+  app.listen config.httpPort
+  console.log "✿ flower"
+  console.log "* running under #{app.settings.env} environment"
+  console.log "* listening on port #{app.address().port} for web server"
+  console.log "* listening on port #{netflowClient.address().port} for netflow client"
+
+# FIXME: The line below causes the big bang. Looks really dirty.
+dataStorage = new DataStorage config.mongoHost, config.mongoPort, onDatabaseSetup
