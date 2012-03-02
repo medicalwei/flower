@@ -177,10 +177,10 @@
       var hour, hourData, r, _len, _ref;
       r = [
         {
-          label: 'download',
+          label: 'Download',
           data: []
         }, {
-          label: 'upload',
+          label: 'Upload',
           data: []
         }
       ];
@@ -416,6 +416,14 @@
 
   dataStorage = new DataStorage(config.mongoHost, config.mongoPort, function() {
     var launchDate;
+    dataStorage.getCollection(function(error, collection) {
+      if (!error) {
+        return collection.ensureIndex({
+          ip: 1,
+          date: -1
+        });
+      }
+    });
     launchDate = new Date;
     return dataStorage.getDataFromDate(launchDate, function(error, data) {
       var dailyData, ipData, _i, _len;

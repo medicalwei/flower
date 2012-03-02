@@ -89,7 +89,7 @@ class HourlyData
       for hour in [0..23]
         @hours[hour] = new Data
   getPlotData: ->
-    r=[{label: 'download', data: []}, {label: 'upload', data: []}]
+    r=[{label: 'Download', data: []}, {label: 'Upload', data: []}]
     for hourData,hour in @hours
       r[0].data[hour] = [hour, hourData.download/1048576]
       r[1].data[hour] = [hour, hourData.upload/1048576]
@@ -253,6 +253,9 @@ app.get '/:ip/:year/:month/:day', (req, res) ->
 
 # Restore values from database. Do it when database is set up.
 dataStorage = new DataStorage config.mongoHost, config.mongoPort, ->
+  dataStorage.getCollection (error, collection) ->
+    if not error
+      collection.ensureIndex {ip: 1, date: -1}
   launchDate = new Date
   dataStorage.getDataFromDate launchDate, (error, data) ->
     if not error

@@ -2,10 +2,6 @@ body {
   padding-top: 60px;
 } 
 
-.sidebar-nav {
-  padding: 9px 0;
-}
-
 div.total div.number {
   font-size: 5em;
   line-height: 1.2em;
@@ -22,4 +18,20 @@ div.updown div.number {
   margin-top: 10px;
   height: 350px;
   width: 100%;
+}
+
+@media (max-width:767px) {
+#graph {
+  height: 250px;
+}
+}
+
+@media (max-width:480px) {
+#graph .tickLabels .xAxis .tickLabel:nth-child(2n) {
+  display: none;
+}
+
+div.total div.number {
+  font-size: 3em;
+}
 }

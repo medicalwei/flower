@@ -2,8 +2,10 @@
 html
   head
     title flower
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
     link(rel='stylesheet', href='/css/bootstrap.min.css')
     link(rel='stylesheet', href='/css/style.css')
+    link(rel='stylesheet', href='/css/bootstrap-responsive.min.css')
     script(type='text/javascript', src='/js/jquery.min.js')
     script(type='text/javascript', src='/js/bootstrap.min.js')
     script(type='text/javascript', src='/js/jquery.flot.min.js')
@@ -12,28 +14,26 @@ html
   body
     div.navbar.navbar-fixed-top
       div.navbar-inner
-        div.container-fluid
+        div.container
+          a.btn.btn-navbar(data-toggle="collapse", data-target=".nav-collapse")
+            span.icon-bar
+            span.icon-bar
+            span.icon-bar
           a.brand(href="/") ✿ flower
-    div.container-fluid
-      div.row-fluid
-        div.span3
-          div.well.sidebar-nav
-            ul#nav.nav.nav-list
+          div.nav-collapse
+            ul.nav
               li
-                a(href="/")
-                  i(class="icon-user")
-                  |  You
+                a(href="/") You
               li
-                a(href="/banned")
-                  i(class="icon-minus-sign")
-                  |  Banned users list
-              li.nav-header TODO: Categories
-              li
-                a 
-                  i(class="icon-folder-close")
-                  |  Foo
-              li
-                a 
-                  i(class="icon-folder-close")
-                  |  Bar
-        div.span9!=body
+                a(href="/banned") Banned users list
+              li.dropdown
+                a.dropdown-toggle(data-toggle="dropdown", href="#") Category
+                  b.caret
+                ul.dropdown-menu
+                  li
+                    a Foo
+                  li
+                    a Bar
+            form.navbar-search.pull-right
+              input(type="text", class="search-query", placeholder="Search IP")
+    div.container!= body
