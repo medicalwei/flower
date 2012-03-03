@@ -24,6 +24,15 @@ div.updown div.number {
   width: 100%;
 }
 
+#tooltipCursorTracker {
+  position: absolute;
+  background: #eee;
+  padding: 5px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 2px solid #ccc;
+}
+
 @media (max-width:767px) {
 #graph {
   height: 250px;
