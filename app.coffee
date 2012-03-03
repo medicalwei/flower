@@ -13,6 +13,7 @@ mongo = require 'mongodb'
 
 app = module.exports = express.createServer()
 
+  
 # mongodb database
 
 class DataStorage
@@ -138,6 +139,32 @@ class FlowData
     delete @days[dateString]
 
 flowData = new FlowData
+
+if app.settings.env == "development"
+  dummy = flowData.getDate(new Date(), true).getIp("127.0.0.1", true)
+  h = dummy.hourlyData.hours
+
+  dummy.upload   = 123456789
+  dummy.download = 987654321
+
+  h[0].upload   = 9
+  h[1].upload   = 80
+  h[2].upload   = 700
+  h[3].upload   = 6000
+  h[4].upload   = 50000
+  h[5].upload   = 400000
+  h[6].upload   = 3000000
+  h[7].upload   = 20000000
+  h[8].upload   = 100000000
+  h[0].download = 1
+  h[1].download = 20
+  h[2].download = 300
+  h[3].download = 4000
+  h[4].download = 50000
+  h[5].download = 600000
+  h[6].download = 7000000
+  h[7].download = 80000000
+  h[8].download = 900000000
 
 # Configuration
 

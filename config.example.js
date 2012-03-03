@@ -24,10 +24,10 @@ exports.ipRule = function(ip) {
   c[1] = parseInt(s[1]);
   c[2] = parseInt(s[2]);
   c[3] = parseInt(s[3]);
-  return (c[0] == 140 &&
-          c[1] == 121 &&
-          c[2] > 1 && c[2] < 255 &&
-          c[3] > 1 && c[3] < 255);
+  return (c[0] == 127 &&
+          c[1] == 0 &&
+          c[2] >= 0 && c[2] <= 255 &&
+          c[3] >= 1 && c[3] <= 254);
 }
 
 // banning rule

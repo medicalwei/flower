@@ -5,7 +5,7 @@
 */
 
 (function() {
-  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, express, flowData, launch, mongo, netflowClient, onDatabaseSetup, setupCronJobs,
+  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, dummy, express, flowData, h, launch, mongo, netflowClient, onDatabaseSetup, setupCronJobs,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -282,6 +282,31 @@
   })();
 
   flowData = new FlowData;
+
+  if (app.settings.env === "development") {
+    dummy = flowData.getDate(new Date(), true).getIp("127.0.0.1", true);
+    h = dummy.hourlyData.hours;
+    dummy.upload = 123456789;
+    dummy.download = 987654321;
+    h[0].upload = 9;
+    h[1].upload = 80;
+    h[2].upload = 700;
+    h[3].upload = 6000;
+    h[4].upload = 50000;
+    h[5].upload = 400000;
+    h[6].upload = 3000000;
+    h[7].upload = 20000000;
+    h[8].upload = 100000000;
+    h[0].download = 1;
+    h[1].download = 20;
+    h[2].download = 300;
+    h[3].download = 4000;
+    h[4].download = 50000;
+    h[5].download = 600000;
+    h[6].download = 7000000;
+    h[7].download = 80000000;
+    h[8].download = 900000000;
+  }
 
   app.configure(function() {
     app.set('views', __dirname + '/views');
