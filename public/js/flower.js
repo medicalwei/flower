@@ -91,10 +91,34 @@
         'border': '2px solid #ccc'
       }).appendTo("body");
       $(document).mousemove(function(e) {
-        return $('#tooltipCursorTracker').css({
-          'left': e.pageX + 5,
-          'bottom': $(window).height() - e.pageY + 5
-        });
+        var atLeft, atTop, left, object, top;
+        object = $('#tooltipCursorTracker');
+        top = e.pageY - $(window).scrollTop();
+        left = e.pageX - $(window).scrollLeft();
+        atTop = (top - $(window).height() / 2) > 0;
+        atLeft = (left - $(window).width() / 2) > 0;
+        if (atTop) {
+          object.css({
+            'top': 'auto',
+            'bottom': $(window).height() - e.pageY + 5
+          });
+        } else {
+          object.css({
+            'top': e.pageY + 5,
+            'bottom': 'auto'
+          });
+        }
+        if (atLeft) {
+          return object.css({
+            'left': 'auto',
+            'right': $(window).width() - e.pageX + 5
+          });
+        } else {
+          return object.css({
+            'left': e.pageX + 5,
+            'right': 'auto'
+          });
+        }
       });
     }
     return $("#tooltipCursorTracker").html(content);

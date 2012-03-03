@@ -69,7 +69,20 @@ setTooltipOnCursor = (content) ->
         'border'       : '2px solid #ccc'
       }
     ).appendTo("body")
-    $(document).mousemove (e) -> $('#tooltipCursorTracker').css {'left': e.pageX+5, 'bottom': $(window).height()-e.pageY+5}
+    $(document).mousemove (e) -> 
+      object = $('#tooltipCursorTracker')
+      top  = e.pageY - $(window).scrollTop();
+      left = e.pageX - $(window).scrollLeft();
+      atTop = (top - $(window).height()/2) > 0
+      atLeft  = (left - $(window).width()/2) > 0
+      if atTop
+        object.css {'top': 'auto', 'bottom': $(window).height()-e.pageY+5}
+      else
+        object.css {'top': e.pageY+5, 'bottom': 'auto'}
+      if atLeft
+        object.css {'left': 'auto', 'right': $(window).width()-e.pageX+5}
+      else
+        object.css {'left': e.pageX+5, 'right': 'auto'}
   $("#tooltipCursorTracker").html(content)
 
 removeTooltipOnCursor = () ->
