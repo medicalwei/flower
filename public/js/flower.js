@@ -1,5 +1,7 @@
 (function() {
-  var binaryTickGenerator, showTooltip, suffixFormatter;
+  var binaryTickGenerator, prevIdx, removeTooltipOnCursor, setTooltipOnCursor, suffixFormatter;
+
+  prevIdx = null;
 
   window.startPlot = function(jqObj, data) {
     $.plot(jqObj, data, {
@@ -15,7 +17,8 @@
         }
       },
       grid: {
-        hoverable: true
+        hoverable: true,
+        autoHighlight: false
       },
       xaxis: {
         tickSize: 1,
@@ -23,23 +26,26 @@
       },
       yaxis: {
         ticks: binaryTickGenerator
+      },
+      multihighlight: {
+        mode: 'x',
+        hoverMode: 'bar'
       }
     });
-    window.tooltipPoint = null;
-    return $("#graph").bind("plothover", function(event, pos, item) {
-      var idx, total;
-      if (item) {
-        if (window.tooltipPoint !== item.dataIndex) {
-          window.tooltipPoint = item.dataIndex;
-          $("#tooltip").remove();
-          idx = item.dataIndex;
-          total = plotData[0].data[idx][1] + plotData[1].data[idx][1];
-          return showTooltip(item.pageX, $("#graph").offset().top, "" + (total.toFixed(2)) + " MiB");
-        }
-      } else {
-        window.tooltipPoint = null;
-        return $("#tooltip").remove();
+    $("#graph").bind("multihighlighted", function(event, pos, items) {
+      var download, idx, total, upload;
+      idx = items[0].dataIndex;
+      if (prevIdx !== idx) {
+        prevIdx = idx;
+        download = data[0].data[idx][1];
+        upload = data[1].data[idx][1];
+        total = upload + download;
+        return setTooltipOnCursor(("" + (total.toFixed(2)) + " MiB<br/>") + ("<i class='icon-download'></i> " + (download.toFixed(2)) + " MiB<br/>") + ("<i class='icon-upload'></i> " + (upload.toFixed(2)) + " MiB"));
       }
+    });
+    return $("#graph").bind("unmultihighlighted", function(event, pos, items) {
+      removeTooltipOnCursor();
+      return prevIdx = null;
     });
   };
 
@@ -69,21 +75,34 @@
 
   suffixFormatter = function(val) {
     if (val >= 1024) return "" + (val / 1024) + "G";
-    if (val === 1) return "0B";
-    if (val < 1) return "" + (val * 1024) + "k";
-    return "" + val + "M";
+    if (val >= 1) return "" + val + "M";
+    if (val >= 1 / 1024) return "" + (val * 1024) + "k";
+    return "" + (val * 1048576) + "B";
   };
 
-  showTooltip = function(x, y, contents) {
-    return $('<div id="tooltip"/>').css({
-      position: 'absolute',
-      display: 'none',
-      top: y,
-      left: x,
-      border: '1px solid #fdd',
-      padding: '2px',
-      'background-color': '#fee'
-    }).text(contents).appendTo("body").show();
+  setTooltipOnCursor = function(content) {
+    if ($("#tooltipCursorTracker").length === 0) {
+      $("<div id='tooltipCursorTracker' />").css({
+        'position': 'absolute',
+        'background': '#eee',
+        'padding': '5px',
+        'font-size': '16px',
+        'border-radius': '5px',
+        'border': '2px solid #ccc'
+      }).appendTo("body");
+      $(document).mousemove(function(e) {
+        return $('#tooltipCursorTracker').css({
+          'left': e.pageX + 5,
+          'bottom': $(window).height() - e.pageY + 5
+        });
+      });
+    }
+    return $("#tooltipCursorTracker").html(content);
+  };
+
+  removeTooltipOnCursor = function() {
+    $("#tooltipCursorTracker").remove();
+    return $(document).unbind('mousemove');
   };
 
 }).call(this);

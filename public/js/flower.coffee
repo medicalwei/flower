@@ -1,23 +1,28 @@
+prevIdx = null
 window.startPlot = (jqObj, data) ->
   $.plot jqObj, data, {
     series: {stack: 0, lines: {show: false, steps: false}, bars: {show: true, barWidth: 1}},
-    grid: {hoverable: true},
+    grid: {hoverable: true, autoHighlight: false},
     xaxis: {tickSize: 1, tickDecimals: 0},
-    yaxis: {ticks: binaryTickGenerator}
+    yaxis: {ticks: binaryTickGenerator},
+    multihighlight: {mode: 'x', hoverMode: 'bar'}
   }
 
-  window.tooltipPoint = null
-  $("#graph").bind "plothover", (event, pos, item) ->
-    if item
-      if window.tooltipPoint != item.dataIndex
-        window.tooltipPoint = item.dataIndex
-        $("#tooltip").remove()
-        idx = item.dataIndex
-        total = plotData[0].data[idx][1] + plotData[1].data[idx][1]
-        showTooltip item.pageX, $("#graph").offset().top, "#{total.toFixed(2)} MiB"
-    else
-      window.tooltipPoint = null
-      $("#tooltip").remove()
+
+  $("#graph").bind "multihighlighted", (event, pos, items) ->
+    idx = items[0].dataIndex
+    if prevIdx != idx
+      prevIdx = idx
+      download = data[0].data[idx][1]
+      upload = data[1].data[idx][1]
+      total = upload + download
+      setTooltipOnCursor "#{total.toFixed(2)} MiB<br/>"+
+                         "<i class='icon-download'></i> #{download.toFixed(2)} MiB<br/>"+
+                         "<i class='icon-upload'></i> #{upload.toFixed(2)} MiB"
+
+  $("#graph").bind "unmultihighlighted", (event, pos, items) ->
+    removeTooltipOnCursor()
+    prevIdx = null
 
 binaryTickGenerator = (axis) ->
   res = []
@@ -47,18 +52,26 @@ binaryTickGenerator = (axis) ->
   return res;
 
 suffixFormatter = (val) ->
-  return "#{val/1024}G" if (val >= 1024) 
-  return "0B" if (val == 1)
-  return "#{val*1024}k" if (val < 1)
-  return "#{val}M"
+  return "#{val/1024}G" if val >= 1024
+  return "#{val}M" if val >= 1
+  return "#{val*1024}k" if val >= 1/1024
+  return "#{val*1048576}B"
 
-showTooltip = (x, y, contents) ->
-  $('<div id="tooltip"/>').css({
-    position: 'absolute',
-    display: 'none',
-    top: y,
-    left: x,
-    border: '1px solid #fdd',
-    padding: '2px',
-    'background-color': '#fee'
-  }).text(contents).appendTo("body").show()
+setTooltipOnCursor = (content) ->
+  if $("#tooltipCursorTracker").length == 0
+    $("<div id='tooltipCursorTracker' />").css( 
+      { 
+        'position'     : 'absolute'
+        'background'   : '#eee'
+        'padding'      : '5px'
+        'font-size'    : '16px'
+        'border-radius': '5px'
+        'border'       : '2px solid #ccc'
+      }
+    ).appendTo("body")
+    $(document).mousemove (e) -> $('#tooltipCursorTracker').css {'left': e.pageX+5, 'bottom': $(window).height()-e.pageY+5}
+  $("#tooltipCursorTracker").html(content)
+
+removeTooltipOnCursor = () ->
+  $("#tooltipCursorTracker").remove()
+  $(document).unbind 'mousemove'
