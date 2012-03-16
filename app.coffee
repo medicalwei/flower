@@ -269,7 +269,7 @@ setupCronJobs = ->
     hourlyCollection.rotate()
 
   # per 10 minute works
-  cronJob '0 2,12,22,32,42,52 * * * *', ->
+  cronJob '1 */10 * * * *', ->
     dataStorage.upsertData collection, hourlyCollection
     console.log "* data upserted"
 

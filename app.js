@@ -383,7 +383,7 @@
     cronJob('0 0 * * * *', function() {
       return hourlyCollection.rotate();
     });
-    return cronJob('0 2,12,22,32,42,52 * * * *', function() {
+    return cronJob('1 */10 * * * *', function() {
       dataStorage.upsertData(collection, hourlyCollection);
       return console.log("* data upserted");
     });
