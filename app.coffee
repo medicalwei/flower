@@ -182,7 +182,7 @@ netflowClient.on "message", (mesg, rinfo) ->
             hourlyIpData.addUpload bytes
           when "download"
             ipData.addDownload bytes
-            hourlyData.addDownload bytes
+            hourlyIpData.addDownload bytes
 
         # TODO: do banning in packet receiving event
 

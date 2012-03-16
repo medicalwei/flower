@@ -281,7 +281,7 @@
               break;
             case "download":
               ipData.addDownload(bytes);
-              _results.push(hourlyData.addDownload(bytes));
+              _results.push(hourlyIpData.addDownload(bytes));
               break;
             default:
               _results.push(void 0);
