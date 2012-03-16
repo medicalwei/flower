@@ -1,7 +1,7 @@
 prevIdx = null
 window.startPlot = (jqObj, data) ->
   $.plot jqObj, data, {
-    series: {stack: 0, lines: {show: false, steps: false}, bars: {show: true, barWidth: 1}},
+    series: {stack: 0, lines: {show: false, steps: false}, bars: {show: true, barWidth: 1*60*60*1000}},
     grid: {hoverable: true, autoHighlight: false},
     xaxis: {mode: "time", minTickSize: [1, "hour"], tickFormatter: timeFormatter},
     yaxis: {ticks: binaryTickGenerator},

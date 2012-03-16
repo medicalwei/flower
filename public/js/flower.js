@@ -13,7 +13,7 @@
         },
         bars: {
           show: true,
-          barWidth: 1
+          barWidth: 1 * 60 * 60 * 1000
         }
       },
       grid: {
