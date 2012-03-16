@@ -22,6 +22,7 @@ div.updown div.number {
   margin-top: 10px;
   height: 350px;
   width: 100%;
+  overflow: hidden;
 }
 
 #tooltipCursorTracker {
