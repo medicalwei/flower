@@ -162,7 +162,10 @@
       return this.rotated = true;
     };
 
-    Collection.prototype.deleteOld = delete Collection.oldData;
+    Collection.prototype.deleteOld = function() {
+      this.rotated = false;
+      return delete this.oldData;
+    };
 
     return Collection;
 

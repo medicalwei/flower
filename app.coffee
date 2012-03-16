@@ -99,7 +99,8 @@ class Collection
     @oldData = @data
     @data = {}
     @rotated = true
-  deleteOld:
+  deleteOld: ->
+    @rotated = false
     delete @oldData
 
 class DailyCollection extends Collection
