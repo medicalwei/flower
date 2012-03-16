@@ -13,15 +13,15 @@ SET default_with_oids = false;
 CREATE TABLE daily (
     ip character varying(16) NOT NULL,
     date date NOT NULL,
-    upload integer,
-    download integer
+    upload bigint,
+    download bigint
 );
 
 CREATE TABLE hourly (
     ip character varying(16) NOT NULL,
     "time" timestamp without time zone NOT NULL,
-    upload integer,
-    download integer
+    upload bigint,
+    download bigint
 );
 
 ALTER TABLE ONLY daily
@@ -30,7 +30,7 @@ ALTER TABLE ONLY daily
 ALTER TABLE ONLY hourly
     ADD CONSTRAINT hourly_pkey PRIMARY KEY (ip, "time");
 
-CREATE FUNCTION upsert_daily(m_ip varchar(16), m_date date, m_upload integer, m_download integer) RETURNS VOID AS
+CREATE FUNCTION upsert_daily(m_ip varchar(16), m_date date, m_upload bigint, m_download bigint) RETURNS VOID AS
 $$
 BEGIN
     UPDATE daily SET upload = m_upload, download = m_download WHERE ip = m_ip AND date = m_date;
@@ -41,7 +41,7 @@ END;
 $$
 LANGUAGE plpgsql;
 
-CREATE FUNCTION upsert_hourly(m_ip varchar(16), m_time timestamp, m_upload integer, m_download integer) RETURNS VOID AS
+CREATE FUNCTION upsert_hourly(m_ip varchar(16), m_time timestamp, m_upload bigint, m_download bigint) RETURNS VOID AS
 $$
 BEGIN
     UPDATE hourly SET upload = m_upload, download = m_download WHERE ip = m_ip AND time = m_time;
