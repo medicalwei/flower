@@ -9,53 +9,48 @@ dgram = require 'dgram'
 NetflowPacket = require 'NetFlowPacket'
 cronJob = require('cron').CronJob
 dateFormat = require 'dateformat'
-mongo = require 'mongodb'
+pg = require 'pg'
 
 app = module.exports = express.createServer()
-
-  
-# mongodb database
-
+ 
+# postgresql database
+# TODO
 class DataStorage
-  constructor: (host, port, callback) ->
-    server = new mongo.Server host, port, {auto_reconnect: true}, {}
-    @db = new mongo.Db 'flower', server
-    @db.open callback
-  getCollection: (callback) ->
-    @db.collection 'history', (error, collection) ->
-      if error 
-        callback error
-      else 
-        callback null, collection
-  upsertData: (dailyData, callback) ->
-    @getCollection (error, collection) ->
-      if error
-        callback error
-      else
-        dateString = dateFormat dailyData.date, 'yyyy-mm-dd'
-        for ip, ipData of dailyData.ips
-          collection.update {date: dateString, ip: ip}, {date: dateString, ip: ip, data: ipData}, {upsert: true}
-        callback null, collection
+  constructor: (databaseUri, callback) ->
+    @db = new pg.Client(databaseUri)
+    @db.connect callback
+  upsertData: (dailyCollection, hourlyCollection) ->
+    #TODO
+    for ip, data of collection
+      result = @db.query "UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4",
+        [data.upload, data.download, ip, collection.date]
+      if result.rowCount == 0
+        @db.query "INSERT INTO daily ('upload', 'download', 'ip', 'date') VALUES ($1, $2, $3, $4)",
+          [data.upload, data.download, ip, collection.date]
+
+    for ip, data of hourlyCollection
+      result = @db.query "UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4",
+        [data.upload, data.download, ip, collection.time]
+      if result.rowCount == 0
+        @db.query "INSERT INTO hourly ('upload', 'download', 'ip', 'time') VALUES ($1, $2, $3, $4)",
+          [data.upload, data.download, ip, collection.time]
   getDataFromDate: (date, callback) ->
-    @getCollection (error, collection) ->
-      if error
-        callback error
-      else
-        dateString = dateFormat date, 'yyyy-mm-dd'
-        collection.find({date: dateString}).toArray(callback);
-  getDataFromIP: (ip, callback) ->
-    @getCollection (error, collection) ->
-      if error
-        callback error
-      else
-        collection.find({ip: ip}).toArray(callback);
-  getData: (date, ip, callback) ->
-    @getCollection (error, collection) ->
-      if error
-        callback error
-      else
-        dateString = dateFormat date, 'yyyy-mm-dd'
-        collection.findOne({date: dateString, ip: ip}, callback);
+    @db.query "SELECT * FROM daily WHERE date = $1", [date], callback
+  getDataFromIP: (ip, count, callback) ->
+    @db.query "SELECT * FROM daily WHERE ip = $1 LIMIT $2", [ip], callback
+  getData: (ip, date, callback) ->
+    @db.query "SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback
+  getHourlyData: (ip, count, callback) ->
+    @db.query "SELECT * FROM hourly WHERE ip = $1 LIMIT $2", [ip, count], callback
+  getLatestDailyData: (callback) ->
+    date = new Date
+    date.setHours(0,0,0,0)
+    @db.query "SELECT * FROM daily WHERE date = $1", [date], callback
+  getLatestHourlyData: (callback) ->
+    date = new Date
+    date.setMinutes(0,0,0)
+    @db.query "SELECT * FROM hourly WHERE time = $1", [date], callback
+
 
 # classes
             
@@ -67,104 +62,70 @@ class Data
     else
       @upload = 0
       @download = 0
-  getTotal: ->
-    @upload + @download
-  addUpload: (bytes) ->
-    @upload += bytes
-  addDownload: (bytes) ->
-    @download += bytes
-  getUploadString: ->
-    (@upload/1048576).toFixed(2)
-  getDownloadString: ->
-    (@download/1048576).toFixed(2)
-  getTotalString: ->
-    (@getTotal()/1048576).toFixed(2)
+  getTotal: -> @upload + @download
+  addUpload: (bytes) -> @upload += bytes
+  addDownload: (bytes) -> @download += bytes
+  getUploadString: -> (@upload/1048576).toFixed(2)
+  getDownloadString: -> (@download/1048576).toFixed(2)
+  getTotalString: -> (@getTotal()/1048576).toFixed(2)
 
-class HourlyData
-  constructor: (data) ->
-    @hours = []
-    if data
-      for hour in [0..23]
-        @hours[hour] = new Data data.hours[hour]
-    else
-      for hour in [0..23]
-        @hours[hour] = new Data
-  getPlotData: ->
-    r=[{label: 'Download', data: []}, {label: 'Upload', data: []}]
-    for hourData,hour in @hours
-      r[0].data[hour] = [hour, hourData.download/1048576]
-      r[1].data[hour] = [hour, hourData.upload/1048576]
-    return r
-
-class IpData extends Data
-  constructor: (data) ->
-    super data
-    if data
-      @hourlyData = new HourlyData data.hourlyData
-    else
-      @hourlyData = new HourlyData
-  isBanned: ->
-    config.banningRule this
-  addUpload: (date, bytes) ->
-    super bytes
-    @hourlyData.hours[date.getHours()].addUpload(bytes)
-  addDownload: (date, bytes) ->
-    super bytes
-    @hourlyData.hours[date.getHours()].addDownload(bytes)
-
-class DailyData
-  constructor: (date)->
-    @ips = {}
-    @date = date
+class Collection
+  constructor: ->
+    @data = {}
+    @rotated = false;
   getIp: (ip, createNew=false) ->
-    if not (ip of @ips)
+    if not (ip of @data)
       if createNew
-        @ips[ip] = new IpData
+        @data[ip] = new Data
       else
         return null
-    @ips[ip]
+    return @data[ip]
+  rotate: ->
+    @oldData = @data
+    @data = {}
+    @rotated = true
+  deleteOld:
+    delete @oldData
 
-class FlowData
-  constructor: -> @days = {}
-  getDate: (date, createNew=false) ->
-    dateString = dateFormat date, 'yyyy-mm-dd'
-    if not (dateString of @days)
-      if createNew
-        @days[dateString] = new DailyData(date)
-      else
-        return null
-    @days[dateString]
-  deleteDate: (date)->
-    dateString = dateFormat date, 'yyyy-mm-dd'
-    delete @days[dateString]
+class DailyCollection extends Collection
+  constructor: ->
+    date = new Date
+    date.setHours(0,0,0,0)
+    super
+    @date = date
+  rotate: ->
+    date = new Date
+    date.setHours(0,0,0,0)
+    super
+    @oldDate = @date
+    @date = date
+  deleteOld: ->
+    super
+    delete @oldDate
 
-flowData = new FlowData
+class HourlyCollection extends Collection
+  constructor: ->
+    time = new Date
+    time.setMinutes(0,0,0)
+    super
+    @time = time
+  rotate: ->
+    time = new Date
+    time.setMinutes(0,0,0)
+    super
+    @oldTime = @time
+    @time = time
+  deleteOld: ->
+    super
+    delete @oldTime
+
+collection = new DailyCollection
+hourlyCollection = new HourlyCollection
 
 if app.settings.env == "development"
-  dummy = flowData.getDate(new Date(), true).getIp("127.0.0.1", true)
-  h = dummy.hourlyData.hours
-
+  dummy = collection.getIp("127.0.0.1", true)
   dummy.upload   = 123456789
   dummy.download = 987654321
-
-  h[0].upload   = 9
-  h[1].upload   = 80
-  h[2].upload   = 700
-  h[3].upload   = 6000
-  h[4].upload   = 50000
-  h[5].upload   = 400000
-  h[6].upload   = 3000000
-  h[7].upload   = 20000000
-  h[8].upload   = 100000000
-  h[0].download = 1
-  h[1].download = 20
-  h[2].download = 300
-  h[3].download = 4000
-  h[4].download = 50000
-  h[5].download = 600000
-  h[6].download = 7000000
-  h[7].download = 80000000
-  h[8].download = 900000000
 
 # Configuration
 
@@ -189,8 +150,6 @@ netflowClient = dgram.createSocket "udp4"
 netflowClient.on "message", (mesg, rinfo) ->
   try
     packet = new NetflowPacket mesg
-    date = new Date
-    dailyData = flowData.getDate date, true
     if packet.header.version == 5
       for flow in packet.v5Flows
         if flow.input == config.outboundInterface
@@ -214,36 +173,22 @@ netflowClient.on "message", (mesg, rinfo) ->
           continue
 
         continue if not config.ipRule ip
-        ipData = dailyData.getIp ip, true
+
+        ipData = collection.getIp ip, true
+        hourlyIpData = hourlyCollection.getIp ip, true
         switch status
-          when "upload" then ipData.addUpload date, bytes
-          when "download" then ipData.addDownload date, bytes
+          when "upload"
+            ipData.addUpload bytes
+            hourlyIpData.addUpload bytes
+          when "download"
+            ipData.addDownload bytes
+            hourlyData.addDownload bytes
 
         # TODO: do banning in packet receiving event
 
   catch err
     console.error "* error receiving Netflow message: #{err}"
 
-# cron jobs
-
-setupCronJobs = ->
-
-  # daily works
-  cronJob '0 0 1 * * *', ->
-    date = new Date
-    date = date.setDate date.getDate()-1 # get last day
-    flowData.deleteDate date
-    console.log "* data at #{dateFormat date, "yyyy-mm-dd"} deleted from memory"
-
-  # per 10 minute works
-  cronJob '0 */10 * * * *', ->
-    date = new Date
-    date = date.setMinutes date.getMinutes()-1 # get last minute
-    dataStorage.upsertData flowData.getDate(date), (error, collection)->
-      if error
-        console.error "* error on cron job: #{error}"
-      else
-        console.log "* data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted to mongodb"
 
 # Some global variables used for view
 
@@ -272,43 +217,68 @@ app.get '/banned', (req, res) ->
 
 app.get '/:ip', (req, res, next) ->
   ip = req.params.ip
-  date = new Date # assuming today if no prompt.
   if not config.ipRule ip
     res.redirect '/category'
     return
-  ipData = flowData.getDate(date).getIp(ip)
+  ipData = collection.getIp ip
+
   if ipData
-    res.render 'ip', { ip: ip, ipData: ipData }
+    dataStorage.getHourlyData ip, 30, (error, data) ->
+      historyPlot=[{label: 'Download', data: []}, {label: 'Upload', data: []}]
+      for row in data.rows
+        historyPlot[0].data[hour] = [row.time, row.download/1048576]
+        historyPlot[1].data[hour] = [row.time, row.upload/1048576]
+      res.render 'ip', { ip: ip, ipData: ipData, historyPlot: historyPlot }
   else
     next()
 
-app.get '/:ip/:year/:month', (req, res) ->
-  res.render 'daily'
+app.get '/:ip/log', (req, res) ->
+  res.render 'log'
 
-app.get '/:ip/:year/:month/:day', (req, res) ->
-  res.render 'hourly'
+app.get '/:ip/log/:year/:month', (req, res) ->
+  # get from a single month.
+
+app.get '/:ip/log/:year/:month/:day', (req, res) ->
+  # get from a single day.
+
+# cron jobs
+setupCronJobs = ->
+
+  # daily works
+  cronJob '0 0 0 * * *', ->
+    collection.rotate()
+    
+  # hourly works
+  cronJob '0 0 * * * *', ->
+    hourlyCollection.rotate()
+
+  # per 10 minute works
+  cronJob '0 */10 * * * *', ->
+    dataStorage.upsertData dailyCollection, hourlyCollection
+    console.log "* data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted"
 
 # Restore values from database, and launch the system.
-
-onDatabaseSetup = ->
-  dataStorage.getCollection (error, collection) ->
-    if not error
-      collection.ensureIndex {ip: 1, date: -1}
+loadDatabase = (callback)->
   launchDate = new Date
-  dataStorage.getDataFromDate launchDate, (error, data) ->
-    # i think we should tolerant error here.
-    if not error
-      dailyData = flowData.getDate launchDate, true
-      for ipData in data
-        dailyData.ips[ipData.ip] = new IpData(ipData.data)
+  dataStorage.getLatestDailyData (error, result) ->
+    for data in result.rows
+      ip = collection.data[ipData.ip]
+      ip.upload = data.upload
+      ip.download = data.download
 
-    # then launch
-    launch()
+    dataStorage.getLatestHourlyData (error, result) ->
+      for data in result.rows
+        ip = hourlyCollection.data[ipData.ip]
+        ip.upload = data.upload
+        ip.download = data.download
 
-launch = ->
-  # begin cron jobs
+      # then call callback
+      callback()
+
+launch = -> 
+  # start cron jobs
   setupCronJobs()
-
+  
   # start listening
   netflowClient.bind config.netflowPort
   app.listen config.httpPort
@@ -316,6 +286,8 @@ launch = ->
   console.log "* running under #{app.settings.env} environment"
   console.log "* listening on port #{app.address().port} for web server"
   console.log "* listening on port #{netflowClient.address().port} for netflow client"
+  
+# ready, set, go!
+dataStorage = new DataStorage(config.databaseUri)
+loadDatabase launch
 
-# FIXME: The line below causes the big bang. Looks really dirty.
-dataStorage = new DataStorage config.mongoHost, config.mongoPort, onDatabaseSetup

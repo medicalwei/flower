@@ -3,7 +3,7 @@ window.startPlot = (jqObj, data) ->
   $.plot jqObj, data, {
     series: {stack: 0, lines: {show: false, steps: false}, bars: {show: true, barWidth: 1}},
     grid: {hoverable: true, autoHighlight: false},
-    xaxis: {tickSize: 1, tickDecimals: 0},
+    xaxis: {mode: "time", minTickSize: [1, "hour"], tickFormatter: timeFormatter},
     yaxis: {ticks: binaryTickGenerator},
     multihighlight: {mode: 'x', hoverMode: 'bar'}
   }
@@ -56,6 +56,9 @@ suffixFormatter = (val) ->
   return "#{val}M" if val >= 1
   return "#{val*1024}k" if val >= 1/1024
   return "#{val*1048576}B"
+
+timeFormatter = (val) ->
+  return new Date(val).getHours()
 
 setTooltipOnCursor = (content) ->
   if $("#tooltipCursorTracker").length == 0

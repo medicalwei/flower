@@ -1,5 +1,5 @@
 (function() {
-  var binaryTickGenerator, prevIdx, removeTooltipOnCursor, setTooltipOnCursor, suffixFormatter;
+  var binaryTickGenerator, prevIdx, removeTooltipOnCursor, setTooltipOnCursor, suffixFormatter, timeFormatter;
 
   prevIdx = null;
 
@@ -21,8 +21,9 @@
         autoHighlight: false
       },
       xaxis: {
-        tickSize: 1,
-        tickDecimals: 0
+        mode: "time",
+        minTickSize: [1, "hour"],
+        tickFormatter: timeFormatter
       },
       yaxis: {
         ticks: binaryTickGenerator
@@ -78,6 +79,10 @@
     if (val >= 1) return "" + val + "M";
     if (val >= 1 / 1024) return "" + (val * 1024) + "k";
     return "" + (val * 1048576) + "B";
+  };
+
+  timeFormatter = function(val) {
+    return new Date(val).getHours();
   };
 
   setTooltipOnCursor = function(content) {

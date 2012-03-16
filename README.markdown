@@ -9,7 +9,7 @@ Design
 ------
 * Gathers all Netflow packets and updates on-the-fly.
 * TODO: Trigger to deal with banned users.
-* For an interval (1 hour), the system writes the data to mongodb
+* For an interval (1 hour), the system writes the data to postgresql
   database.
 * TODO: The user can check the usage history in daily and hourly
   perspective.
@@ -24,7 +24,7 @@ Prerequisities
 
 Up and running
 --------------
-* TODO: should install NetFlowPacket first
+* TODO: should install NetFlowPacket and postgresql first
 * npm install
 * cp config.example.js config.js
 * edit config.js

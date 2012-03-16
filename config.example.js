@@ -12,9 +12,8 @@ exports.httpPort = 3000;
 // outbound SNMP interface index
 exports.outboundInterface = 0x0017;
 
-// mongodb host and port
-exports.mongoHost = "localhost";
-exports.mongoPort = 27017;
+// postgresql database uri
+exports.databaseUri = "tcp://someone:meow@localhost/flower";
 
 // valid ip rule
 exports.ipRule = function(ip) {

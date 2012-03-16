@@ -16,5 +16,5 @@ div.row
     noscript Please enable JavaScript for graph plotting.
     div#graph
     script
-      var plotData=!{JSON.stringify(ipData.hourlyData.getPlotData())};
+      var plotData=!{JSON.stringify(historyPlot)};
       startPlot($("#graph"), plotData);

@@ -5,7 +5,7 @@
 */
 
 (function() {
-  var DailyData, Data, DataStorage, FlowData, HourlyData, IpData, NetflowPacket, app, config, cronJob, dataStorage, dateFormat, dgram, dummy, express, flowData, h, launch, mongo, netflowClient, onDatabaseSetup, setupCronJobs,
+  var Collection, DailyCollection, Data, DataStorage, HourlyCollection, NetflowPacket, app, collection, config, cronJob, dataStorage, dateFormat, dgram, dummy, express, hourlyCollection, launch, loadDatabase, netflowClient, pg, setupCronJobs,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -21,96 +21,67 @@
 
   dateFormat = require('dateformat');
 
-  mongo = require('mongodb');
+  pg = require('pg');
 
   app = module.exports = express.createServer();
 
   DataStorage = (function() {
 
-    function DataStorage(host, port, callback) {
-      var server;
-      server = new mongo.Server(host, port, {
-        auto_reconnect: true
-      }, {});
-      this.db = new mongo.Db('flower', server);
-      this.db.open(callback);
+    function DataStorage(databaseUri, callback) {
+      this.db = new pg.Client(databaseUri);
+      this.db.connect(callback);
     }
 
-    DataStorage.prototype.getCollection = function(callback) {
-      return this.db.collection('history', function(error, collection) {
-        if (error) {
-          return callback(error);
-        } else {
-          return callback(null, collection);
+    DataStorage.prototype.upsertData = function(dailyCollection, hourlyCollection) {
+      var data, ip, result, _results;
+      for (ip in collection) {
+        data = collection[ip];
+        result = this.db.query("UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4", [data.upload, data.download, ip, collection.date]);
+        if (result.rowCount === 0) {
+          this.db.query("INSERT INTO daily ('upload', 'download', 'ip', 'date') VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.date]);
         }
-      });
-    };
-
-    DataStorage.prototype.upsertData = function(dailyData, callback) {
-      return this.getCollection(function(error, collection) {
-        var dateString, ip, ipData, _ref;
-        if (error) {
-          return callback(error);
+      }
+      _results = [];
+      for (ip in hourlyCollection) {
+        data = hourlyCollection[ip];
+        result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [data.upload, data.download, ip, collection.time]);
+        if (result.rowCount === 0) {
+          _results.push(this.db.query("INSERT INTO hourly ('upload', 'download', 'ip', 'time') VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.time]));
         } else {
-          dateString = dateFormat(dailyData.date, 'yyyy-mm-dd');
-          _ref = dailyData.ips;
-          for (ip in _ref) {
-            ipData = _ref[ip];
-            collection.update({
-              date: dateString,
-              ip: ip
-            }, {
-              date: dateString,
-              ip: ip,
-              data: ipData
-            }, {
-              upsert: true
-            });
-          }
-          return callback(null, collection);
+          _results.push(void 0);
         }
-      });
+      }
+      return _results;
     };
 
     DataStorage.prototype.getDataFromDate = function(date, callback) {
-      return this.getCollection(function(error, collection) {
-        var dateString;
-        if (error) {
-          return callback(error);
-        } else {
-          dateString = dateFormat(date, 'yyyy-mm-dd');
-          return collection.find({
-            date: dateString
-          }).toArray(callback);
-        }
-      });
+      return this.db.query("SELECT * FROM daily WHERE date = $1", [date], callback);
     };
 
-    DataStorage.prototype.getDataFromIP = function(ip, callback) {
-      return this.getCollection(function(error, collection) {
-        if (error) {
-          return callback(error);
-        } else {
-          return collection.find({
-            ip: ip
-          }).toArray(callback);
-        }
-      });
+    DataStorage.prototype.getDataFromIP = function(ip, count, callback) {
+      return this.db.query("SELECT * FROM daily WHERE ip = $1 LIMIT $2", [ip], callback);
     };
 
-    DataStorage.prototype.getData = function(date, ip, callback) {
-      return this.getCollection(function(error, collection) {
-        var dateString;
-        if (error) {
-          return callback(error);
-        } else {
-          dateString = dateFormat(date, 'yyyy-mm-dd');
-          return collection.findOne({
-            date: dateString,
-            ip: ip
-          }, callback);
-        }
-      });
+    DataStorage.prototype.getData = function(ip, date, callback) {
+      return this.db.query("SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback);
+    };
+
+    DataStorage.prototype.getHourlyData = function(ip, count, callback) {
+      return this.db.query("SELECT * FROM hourly WHERE ip = $1 LIMIT $2", [ip, count], callback);
+    };
+
+    DataStorage.prototype.getLatestDailyData = function(callback) {
+      var date;
+      date = new Date;
+      date.setHours(0, 0, 0, 0);
+      return this.db.query("SELECT * FROM daily WHERE date = $1", [date], callback);
+    };
+
+    DataStorage.prototype.getLatestHourlyData = function(callback) {
+      var date;
+      date = new Date;
+      date.setMinutes(0, 0, 0);
+      return this.db.query("SELECT * FROM hourly WHERE time = $1", [date], callback);
     };
 
     return DataStorage;
@@ -157,155 +128,105 @@
 
   })();
 
-  HourlyData = (function() {
+  Collection = (function() {
 
-    function HourlyData(data) {
-      var hour;
-      this.hours = [];
-      if (data) {
-        for (hour = 0; hour <= 23; hour++) {
-          this.hours[hour] = new Data(data.hours[hour]);
-        }
-      } else {
-        for (hour = 0; hour <= 23; hour++) {
-          this.hours[hour] = new Data;
-        }
-      }
+    function Collection() {
+      this.data = {};
+      this.rotated = false;
     }
 
-    HourlyData.prototype.getPlotData = function() {
-      var hour, hourData, r, _len, _ref;
-      r = [
-        {
-          label: 'Download',
-          data: []
-        }, {
-          label: 'Upload',
-          data: []
+    Collection.prototype.getIp = function(ip, createNew) {
+      if (createNew == null) createNew = false;
+      if (!(ip in this.data)) {
+        if (createNew) {
+          this.data[ip] = new Data;
+        } else {
+          return null;
         }
-      ];
-      _ref = this.hours;
-      for (hour = 0, _len = _ref.length; hour < _len; hour++) {
-        hourData = _ref[hour];
-        r[0].data[hour] = [hour, hourData.download / 1048576];
-        r[1].data[hour] = [hour, hourData.upload / 1048576];
       }
-      return r;
+      return this.data[ip];
     };
 
-    return HourlyData;
+    Collection.prototype.rotate = function() {
+      this.oldData = this.data;
+      this.data = {};
+      return this.rotated = true;
+    };
+
+    Collection.prototype.deleteOld = delete Collection.oldData;
+
+    return Collection;
 
   })();
 
-  IpData = (function(_super) {
+  DailyCollection = (function(_super) {
 
-    __extends(IpData, _super);
+    __extends(DailyCollection, _super);
 
-    function IpData(data) {
-      IpData.__super__.constructor.call(this, data);
-      if (data) {
-        this.hourlyData = new HourlyData(data.hourlyData);
-      } else {
-        this.hourlyData = new HourlyData;
-      }
-    }
-
-    IpData.prototype.isBanned = function() {
-      return config.banningRule(this);
-    };
-
-    IpData.prototype.addUpload = function(date, bytes) {
-      IpData.__super__.addUpload.call(this, bytes);
-      return this.hourlyData.hours[date.getHours()].addUpload(bytes);
-    };
-
-    IpData.prototype.addDownload = function(date, bytes) {
-      IpData.__super__.addDownload.call(this, bytes);
-      return this.hourlyData.hours[date.getHours()].addDownload(bytes);
-    };
-
-    return IpData;
-
-  })(Data);
-
-  DailyData = (function() {
-
-    function DailyData(date) {
-      this.ips = {};
+    function DailyCollection() {
+      var date;
+      date = new Date;
+      date.setHours(0, 0, 0, 0);
+      DailyCollection.__super__.constructor.apply(this, arguments);
       this.date = date;
     }
 
-    DailyData.prototype.getIp = function(ip, createNew) {
-      if (createNew == null) createNew = false;
-      if (!(ip in this.ips)) {
-        if (createNew) {
-          this.ips[ip] = new IpData;
-        } else {
-          return null;
-        }
-      }
-      return this.ips[ip];
+    DailyCollection.prototype.rotate = function() {
+      var date;
+      date = new Date;
+      date.setHours(0, 0, 0, 0);
+      DailyCollection.__super__.rotate.apply(this, arguments);
+      this.oldDate = this.date;
+      return this.date = date;
     };
 
-    return DailyData;
+    DailyCollection.prototype.deleteOld = function() {
+      DailyCollection.__super__.deleteOld.apply(this, arguments);
+      return delete this.oldDate;
+    };
 
-  })();
+    return DailyCollection;
 
-  FlowData = (function() {
+  })(Collection);
 
-    function FlowData() {
-      this.days = {};
+  HourlyCollection = (function(_super) {
+
+    __extends(HourlyCollection, _super);
+
+    function HourlyCollection() {
+      var time;
+      time = new Date;
+      time.setMinutes(0, 0, 0);
+      HourlyCollection.__super__.constructor.apply(this, arguments);
+      this.time = time;
     }
 
-    FlowData.prototype.getDate = function(date, createNew) {
-      var dateString;
-      if (createNew == null) createNew = false;
-      dateString = dateFormat(date, 'yyyy-mm-dd');
-      if (!(dateString in this.days)) {
-        if (createNew) {
-          this.days[dateString] = new DailyData(date);
-        } else {
-          return null;
-        }
-      }
-      return this.days[dateString];
+    HourlyCollection.prototype.rotate = function() {
+      var time;
+      time = new Date;
+      time.setMinutes(0, 0, 0);
+      HourlyCollection.__super__.rotate.apply(this, arguments);
+      this.oldTime = this.time;
+      return this.time = time;
     };
 
-    FlowData.prototype.deleteDate = function(date) {
-      var dateString;
-      dateString = dateFormat(date, 'yyyy-mm-dd');
-      return delete this.days[dateString];
+    HourlyCollection.prototype.deleteOld = function() {
+      HourlyCollection.__super__.deleteOld.apply(this, arguments);
+      return delete this.oldTime;
     };
 
-    return FlowData;
+    return HourlyCollection;
 
-  })();
+  })(Collection);
 
-  flowData = new FlowData;
+  collection = new DailyCollection;
+
+  hourlyCollection = new HourlyCollection;
 
   if (app.settings.env === "development") {
-    dummy = flowData.getDate(new Date(), true).getIp("127.0.0.1", true);
-    h = dummy.hourlyData.hours;
+    dummy = collection.getIp("127.0.0.1", true);
     dummy.upload = 123456789;
     dummy.download = 987654321;
-    h[0].upload = 9;
-    h[1].upload = 80;
-    h[2].upload = 700;
-    h[3].upload = 6000;
-    h[4].upload = 50000;
-    h[5].upload = 400000;
-    h[6].upload = 3000000;
-    h[7].upload = 20000000;
-    h[8].upload = 100000000;
-    h[0].download = 1;
-    h[1].download = 20;
-    h[2].download = 300;
-    h[3].download = 4000;
-    h[4].download = 50000;
-    h[5].download = 600000;
-    h[6].download = 7000000;
-    h[7].download = 80000000;
-    h[8].download = 900000000;
   }
 
   app.configure(function() {
@@ -331,11 +252,9 @@
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, dailyData, date, flow, ip, ipData, packet, status, _i, _len, _ref, _results;
+    var bytes, flow, hourlyIpData, ip, ipData, packet, status, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
-      date = new Date;
-      dailyData = flowData.getDate(date, true);
       if (packet.header.version === 5) {
         _ref = packet.v5Flows;
         _results = [];
@@ -353,13 +272,16 @@
             continue;
           }
           if (!config.ipRule(ip)) continue;
-          ipData = dailyData.getIp(ip, true);
+          ipData = collection.getIp(ip, true);
+          hourlyIpData = hourlyCollection.getIp(ip, true);
           switch (status) {
             case "upload":
-              _results.push(ipData.addUpload(date, bytes));
+              ipData.addUpload(bytes);
+              _results.push(hourlyIpData.addUpload(bytes));
               break;
             case "download":
-              _results.push(ipData.addDownload(date, bytes));
+              ipData.addDownload(bytes);
+              _results.push(hourlyData.addDownload(bytes));
               break;
             default:
               _results.push(void 0);
@@ -371,28 +293,6 @@
       return console.error("* error receiving Netflow message: " + err);
     }
   });
-
-  setupCronJobs = function() {
-    cronJob('0 0 1 * * *', function() {
-      var date;
-      date = new Date;
-      date = date.setDate(date.getDate() - 1);
-      flowData.deleteDate(date);
-      return console.log("* data at " + (dateFormat(date, "yyyy-mm-dd")) + " deleted from memory");
-    });
-    return cronJob('0 */10 * * * *', function() {
-      var date;
-      date = new Date;
-      date = date.setMinutes(date.getMinutes() - 1);
-      return dataStorage.upsertData(flowData.getDate(date), function(error, collection) {
-        if (error) {
-          return console.error("* error on cron job: " + error);
-        } else {
-          return console.log("* data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted to mongodb");
-        }
-      });
-    });
-  };
 
   global.views = {
     siteName: config.siteName
@@ -421,53 +321,86 @@
   });
 
   app.get('/:ip', function(req, res, next) {
-    var date, ip, ipData;
+    var ip, ipData;
     ip = req.params.ip;
-    date = new Date;
     if (!config.ipRule(ip)) {
       res.redirect('/category');
       return;
     }
-    ipData = flowData.getDate(date).getIp(ip);
+    ipData = collection.getIp(ip);
     if (ipData) {
-      return res.render('ip', {
-        ip: ip,
-        ipData: ipData
+      return dataStorage.getHourlyData(ip, 30, function(error, data) {
+        var historyPlot, row, _i, _len, _ref;
+        historyPlot = [
+          {
+            label: 'Download',
+            data: []
+          }, {
+            label: 'Upload',
+            data: []
+          }
+        ];
+        _ref = data.rows;
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          row = _ref[_i];
+          historyPlot[0].data[hour] = [row.time, row.download / 1048576];
+          historyPlot[1].data[hour] = [row.time, row.upload / 1048576];
+        }
+        return res.render('ip', {
+          ip: ip,
+          ipData: ipData,
+          historyPlot: historyPlot
+        });
       });
     } else {
       return next();
     }
   });
 
-  app.get('/:ip/:year/:month', function(req, res) {
-    return res.render('daily');
+  app.get('/:ip/log', function(req, res) {
+    return res.render('log');
   });
 
-  app.get('/:ip/:year/:month/:day', function(req, res) {
-    return res.render('hourly');
-  });
+  app.get('/:ip/log/:year/:month', function(req, res) {});
 
-  onDatabaseSetup = function() {
-    var launchDate;
-    dataStorage.getCollection(function(error, collection) {
-      if (!error) {
-        return collection.ensureIndex({
-          ip: 1,
-          date: -1
-        });
-      }
+  app.get('/:ip/log/:year/:month/:day', function(req, res) {});
+
+  setupCronJobs = function() {
+    cronJob('0 0 0 * * *', function() {
+      return collection.rotate();
     });
+    cronJob('0 0 * * * *', function() {
+      return hourlyCollection.rotate();
+    });
+    return cronJob('0 */10 * * * *', function() {
+      dataStorage.upsertData(dailyCollection, hourlyCollection);
+      return console.log("* data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted");
+    });
+  };
+
+  loadDatabase = function(callback) {
+    var launchDate;
     launchDate = new Date;
-    return dataStorage.getDataFromDate(launchDate, function(error, data) {
-      var dailyData, ipData, _i, _len;
-      if (!error) {
-        dailyData = flowData.getDate(launchDate, true);
-        for (_i = 0, _len = data.length; _i < _len; _i++) {
-          ipData = data[_i];
-          dailyData.ips[ipData.ip] = new IpData(ipData.data);
-        }
+    return dataStorage.getLatestDailyData(function(error, result) {
+      var data, ip, _i, _len, _ref;
+      _ref = result.rows;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        data = _ref[_i];
+        ip = collection.data[ipData.ip];
+        ip.upload = data.upload;
+        ip.download = data.download;
       }
-      return launch();
+      return dataStorage.getLatestHourlyData(function(error, result) {
+        var data, _j, _len2, _ref2;
+        _ref2 = result.rows;
+        for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+          data = _ref2[_j];
+          ip = hourlyCollection.data[ipData.ip];
+          ip.upload = data.upload;
+          ip.download = data.download;
+        }
+        return callback();
+      });
     });
   };
 
@@ -481,6 +414,8 @@
     return console.log("* listening on port " + (netflowClient.address().port) + " for netflow client");
   };
 
-  dataStorage = new DataStorage(config.mongoHost, config.mongoPort, onDatabaseSetup);
+  dataStorage = new DataStorage(config.databaseUri);
+
+  loadDatabase(launch);
 
 }).call(this);
