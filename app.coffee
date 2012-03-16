@@ -227,10 +227,12 @@ app.get '/:ip', (req, res, next) ->
       historyPlot=[{label: 'Download', data: []}, {label: 'Upload', data: []}]
       hourlyIpData = hourlyCollection.getIp ip, true # tolerant here
       for row in data.rows
-        historyPlot[0].data.push [row.time, row.download/1048576]
-        historyPlot[1].data.push [row.time, row.upload/1048576]
-      historyPlot[0].data.push [hourlyCollection.time, hourlyIpData.download/1048576]
-      historyPlot[1].data.push [hourlyCollection.time, hourlyIpData.upload/1048576]
+        time = row.time.getTime();
+        historyPlot[0].data.push [time, row.download/1048576]
+        historyPlot[1].data.push [time, row.upload/1048576]
+      time = hourlyCollection.time.getTime();
+      historyPlot[0].data.push [time, hourlyIpData.download/1048576]
+      historyPlot[1].data.push [time, hourlyIpData.upload/1048576]
       
       res.render 'ip', { ip: ip, ipData: ipData, historyPlot: historyPlot }
   else

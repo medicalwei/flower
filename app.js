@@ -330,7 +330,7 @@
     ipData = collection.getIp(ip);
     if (ipData) {
       return dataStorage.getHourlyData(ip, 1, 29, function(error, data) {
-        var historyPlot, hourlyIpData, row, _i, _len, _ref;
+        var historyPlot, hourlyIpData, row, time, _i, _len, _ref;
         historyPlot = [
           {
             label: 'Download',
@@ -344,11 +344,13 @@
         _ref = data.rows;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           row = _ref[_i];
-          historyPlot[0].data.push([row.time, row.download / 1048576]);
-          historyPlot[1].data.push([row.time, row.upload / 1048576]);
+          time = row.time.getTime();
+          historyPlot[0].data.push([time, row.download / 1048576]);
+          historyPlot[1].data.push([time, row.upload / 1048576]);
         }
-        historyPlot[0].data.push([hourlyCollection.time, hourlyIpData.download / 1048576]);
-        historyPlot[1].data.push([hourlyCollection.time, hourlyIpData.upload / 1048576]);
+        time = hourlyCollection.time.getTime();
+        historyPlot[0].data.push([time, hourlyIpData.download / 1048576]);
+        historyPlot[1].data.push([time, hourlyIpData.upload / 1048576]);
         return res.render('ip', {
           ip: ip,
           ipData: ipData,
