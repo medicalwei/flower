@@ -21,19 +21,34 @@ class DataStorage
     @db.connect callback
   upsertData: (dailyCollection, hourlyCollection) ->
     #TODO
-    for ip, data of collection.data
+    if collection.rotated
+      dailyData = collection.oldData
+      hourlyData = hourlyCollection.oldData
+      dailyDate = collection.oldDate
+      hourlyTime = hourlyCollectoin.oldTime
+    else
+      dailyData = collection.data
+      hourlyData = hourlyCollection.data
+      dailyDate = collection.date
+      hourlyTime = hourlyCollectoin.time
+
+    for ip, data of dailyData
       result = @db.query "UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4",
-        [data.upload, data.download, ip, collection.date]
+        [data.upload, data.download, ip, dailyDate]
       if result.rowCount == 0
         @db.query "INSERT INTO daily (upload, download, ip, date) VALUES ($1, $2, $3, $4)",
-          [data.upload, data.download, ip, collection.date]
+          [data.upload, data.download, ip, dailyDate]
 
-    for ip, data of hourlyCollection.data
+    for ip, data of hourlyData
       result = @db.query "UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4",
-        [data.upload, data.download, ip, collection.time]
+        [data.upload, data.download, ip, hourlyTime]
       if result.rowCount == 0
         @db.query "INSERT INTO hourly (upload, download, ip, time) VALUES ($1, $2, $3, $4)",
-          [data.upload, data.download, ip, collection.time]
+          [data.upload, data.download, ip, hourlyTime]
+
+    collection.deleteOld()
+    hourlyCollection.deleteOld()
+    
   getDataFromDate: (date, callback) ->
     @db.query "SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback
   getDataFromIP: (ip, offset, limit, callback) ->
@@ -259,7 +274,7 @@ setupCronJobs = ->
     hourlyCollection.rotate()
 
   # per 10 minute works
-  cronJob '0 */10 * * * *', ->
+  cronJob '0 2,12,22,32,42,52 * * * *', ->
     dataStorage.upsertData collection, hourlyCollection
     console.log "* data upserted"
 

@@ -33,27 +33,34 @@
     }
 
     DataStorage.prototype.upsertData = function(dailyCollection, hourlyCollection) {
-      var data, ip, result, _ref, _ref2, _results;
-      _ref = collection.data;
-      for (ip in _ref) {
-        data = _ref[ip];
-        result = this.db.query("UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4", [data.upload, data.download, ip, collection.date]);
+      var dailyData, dailyDate, data, hourlyData, hourlyTime, ip, result;
+      if (collection.rotated) {
+        dailyData = collection.oldData;
+        hourlyData = hourlyCollection.oldData;
+        dailyDate = collection.oldDate;
+        hourlyTime = hourlyCollectoin.oldTime;
+      } else {
+        dailyData = collection.data;
+        hourlyData = hourlyCollection.data;
+        dailyDate = collection.date;
+        hourlyTime = hourlyCollectoin.time;
+      }
+      for (ip in dailyData) {
+        data = dailyData[ip];
+        result = this.db.query("UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4", [data.upload, data.download, ip, dailyDate]);
         if (result.rowCount === 0) {
-          this.db.query("INSERT INTO daily (upload, download, ip, date) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.date]);
+          this.db.query("INSERT INTO daily (upload, download, ip, date) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, dailyDate]);
         }
       }
-      _ref2 = hourlyCollection.data;
-      _results = [];
-      for (ip in _ref2) {
-        data = _ref2[ip];
-        result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [data.upload, data.download, ip, collection.time]);
+      for (ip in hourlyData) {
+        data = hourlyData[ip];
+        result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [data.upload, data.download, ip, hourlyTime]);
         if (result.rowCount === 0) {
-          _results.push(this.db.query("INSERT INTO hourly (upload, download, ip, time) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.time]));
-        } else {
-          _results.push(void 0);
+          this.db.query("INSERT INTO hourly (upload, download, ip, time) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, hourlyTime]);
         }
       }
-      return _results;
+      collection.deleteOld();
+      return hourlyCollection.deleteOld();
     };
 
     DataStorage.prototype.getDataFromDate = function(date, callback) {
@@ -379,7 +386,7 @@
     cronJob('0 0 * * * *', function() {
       return hourlyCollection.rotate();
     });
-    return cronJob('0 */10 * * * *', function() {
+    return cronJob('0 2,12,22,32,42,52 * * * *', function() {
       dataStorage.upsertData(collection, hourlyCollection);
       return console.log("* data upserted");
     });
