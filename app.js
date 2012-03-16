@@ -33,17 +33,19 @@
     }
 
     DataStorage.prototype.upsertData = function(dailyCollection, hourlyCollection) {
-      var data, ip, result, _results;
-      for (ip in collection) {
-        data = collection[ip];
+      var data, ip, result, _ref, _ref2, _results;
+      _ref = collection.data;
+      for (ip in _ref) {
+        data = _ref[ip];
         result = this.db.query("UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4", [data.upload, data.download, ip, collection.date]);
         if (result.rowCount === 0) {
           this.db.query("INSERT INTO daily ('upload', 'download', 'ip', 'date') VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.date]);
         }
       }
+      _ref2 = hourlyCollection.data;
       _results = [];
-      for (ip in hourlyCollection) {
-        data = hourlyCollection[ip];
+      for (ip in _ref2) {
+        data = _ref2[ip];
         result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [data.upload, data.download, ip, collection.time]);
         if (result.rowCount === 0) {
           _results.push(this.db.query("INSERT INTO hourly ('upload', 'download', 'ip', 'time') VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.time]));

@@ -21,14 +21,14 @@ class DataStorage
     @db.connect callback
   upsertData: (dailyCollection, hourlyCollection) ->
     #TODO
-    for ip, data of collection
+    for ip, data of collection.data
       result = @db.query "UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4",
         [data.upload, data.download, ip, collection.date]
       if result.rowCount == 0
         @db.query "INSERT INTO daily ('upload', 'download', 'ip', 'date') VALUES ($1, $2, $3, $4)",
           [data.upload, data.download, ip, collection.date]
 
-    for ip, data of hourlyCollection
+    for ip, data of hourlyCollection.data
       result = @db.query "UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4",
         [data.upload, data.download, ip, collection.time]
       if result.rowCount == 0
