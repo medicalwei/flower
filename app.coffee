@@ -261,7 +261,7 @@ setupCronJobs = ->
   # per 10 minute works
   cronJob '0 */10 * * * *', ->
     dataStorage.upsertData collection, hourlyCollection
-    console.log "* data at #{dateFormat date, "yyyy-mm-dd HH:MM"} upserted"
+    console.log "* data upserted"
 
 # Restore values from database, and launch the system.
 loadDatabase = (callback)->

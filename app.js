@@ -379,7 +379,7 @@
     });
     return cronJob('0 */10 * * * *', function() {
       dataStorage.upsertData(collection, hourlyCollection);
-      return console.log("* data at " + (dateFormat(date, "yyyy-mm-dd HH:MM")) + " upserted");
+      return console.log("* data upserted");
     });
   };
 
