@@ -87,14 +87,7 @@
 
   setTooltipOnCursor = function(content) {
     if ($("#tooltipCursorTracker").length === 0) {
-      $("<div id='tooltipCursorTracker' />").css({
-        'position': 'absolute',
-        'background': '#eee',
-        'padding': '5px',
-        'font-size': '16px',
-        'border-radius': '5px',
-        'border': '2px solid #ccc'
-      }).appendTo("body");
+      $("<div id='tooltipCursorTracker' />").appendTo("body");
       $(document).mousemove(function(e) {
         var atLeft, atTop, left, object, top;
         object = $('#tooltipCursorTracker');
