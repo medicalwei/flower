@@ -25,12 +25,12 @@ class DataStorage
       dailyData = collection.oldData
       hourlyData = hourlyCollection.oldData
       dailyDate = collection.oldDate
-      hourlyTime = hourlyCollectoin.oldTime
+      hourlyTime = hourlyCollection.oldTime
     else
       dailyData = collection.data
       hourlyData = hourlyCollection.data
       dailyDate = collection.date
-      hourlyTime = hourlyCollectoin.time
+      hourlyTime = hourlyCollection.time
 
     for ip, data of dailyData
       result = @db.query "SELECT upsert_daily($1, $2, $3, $4)",

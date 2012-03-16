@@ -38,26 +38,20 @@
         dailyData = collection.oldData;
         hourlyData = hourlyCollection.oldData;
         dailyDate = collection.oldDate;
-        hourlyTime = hourlyCollectoin.oldTime;
+        hourlyTime = hourlyCollection.oldTime;
       } else {
         dailyData = collection.data;
         hourlyData = hourlyCollection.data;
         dailyDate = collection.date;
-        hourlyTime = hourlyCollectoin.time;
+        hourlyTime = hourlyCollection.time;
       }
       for (ip in dailyData) {
         data = dailyData[ip];
-        result = this.db.query("UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4", [data.upload, data.download, ip, dailyDate]);
-        if (result.rowCount === 0) {
-          this.db.query("INSERT INTO daily (upload, download, ip, date) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, dailyDate]);
-        }
+        result = this.db.query("SELECT upsert_daily($1, $2, $3, $4)", [ip, dailyDate, data.upload, data.download]);
       }
       for (ip in hourlyData) {
         data = hourlyData[ip];
-        result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [data.upload, data.download, ip, hourlyTime]);
-        if (result.rowCount === 0) {
-          this.db.query("INSERT INTO hourly (upload, download, ip, time) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, hourlyTime]);
-        }
+        result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [ip, hourlyTime, data.upload, data.download]);
       }
       collection.deleteOld();
       return hourlyCollection.deleteOld();
