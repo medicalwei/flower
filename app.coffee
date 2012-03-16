@@ -37,7 +37,7 @@ class DataStorage
         [ip, dailyDate, data.upload, data.download]
 
     for ip, data of hourlyData
-      result = @db.query "UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4",
+      result = @db.query "SELECT upsert_hourly($1, $2, $3, $4)",
         [ip, hourlyTime, data.upload, data.download]
 
     collection.deleteOld()
@@ -278,13 +278,13 @@ loadDatabase = (callback)->
   launchDate = new Date
   dataStorage.getLatestDailyData (error, result) ->
     for data in result.rows
-      ip = collection.data[ipData.ip]
+      ip = collection.getIp data.ip, true
       ip.upload = data.upload
       ip.download = data.download
 
     dataStorage.getLatestHourlyData (error, result) ->
       for data in result.rows
-        ip = hourlyCollection.data[ipData.ip]
+        ip = hourlyCollection.getIp data.ip, true
         ip.upload = data.upload
         ip.download = data.download
 

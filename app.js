@@ -51,7 +51,7 @@
       }
       for (ip in hourlyData) {
         data = hourlyData[ip];
-        result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [ip, hourlyTime, data.upload, data.download]);
+        result = this.db.query("SELECT upsert_hourly($1, $2, $3, $4)", [ip, hourlyTime, data.upload, data.download]);
       }
       collection.deleteOld();
       return hourlyCollection.deleteOld();
@@ -397,7 +397,7 @@
       _ref = result.rows;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         data = _ref[_i];
-        ip = collection.data[ipData.ip];
+        ip = collection.getIp(data.ip, true);
         ip.upload = data.upload;
         ip.download = data.download;
       }
@@ -406,7 +406,7 @@
         _ref2 = result.rows;
         for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
           data = _ref2[_j];
-          ip = hourlyCollection.data[ipData.ip];
+          ip = hourlyCollection.getIp(data.ip, true);
           ip.upload = data.upload;
           ip.download = data.download;
         }
