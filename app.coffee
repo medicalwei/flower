@@ -33,18 +33,12 @@ class DataStorage
       hourlyTime = hourlyCollectoin.time
 
     for ip, data of dailyData
-      result = @db.query "UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4",
-        [data.upload, data.download, ip, dailyDate]
-      if result.rowCount == 0
-        @db.query "INSERT INTO daily (upload, download, ip, date) VALUES ($1, $2, $3, $4)",
-          [data.upload, data.download, ip, dailyDate]
+      result = @db.query "SELECT upsert_daily($1, $2, $3, $4)",
+        [ip, dailyDate, data.upload, data.download]
 
     for ip, data of hourlyData
       result = @db.query "UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4",
-        [data.upload, data.download, ip, hourlyTime]
-      if result.rowCount == 0
-        @db.query "INSERT INTO hourly (upload, download, ip, time) VALUES ($1, $2, $3, $4)",
-          [data.upload, data.download, ip, hourlyTime]
+        [ip, hourlyTime, data.upload, data.download]
 
     collection.deleteOld()
     hourlyCollection.deleteOld()

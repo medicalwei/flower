@@ -29,3 +29,26 @@ ALTER TABLE ONLY daily
 
 ALTER TABLE ONLY hourly
     ADD CONSTRAINT hourly_pkey PRIMARY KEY (ip, "time");
+
+CREATE FUNCTION upsert_daily(m_ip varchar(16), m_date date, m_upload integer, m_download integer) RETURNS VOID AS
+$$
+BEGIN
+    UPDATE daily SET upload = m_upload, download = m_download WHERE ip = m_ip AND date = m_date;
+    IF NOT FOUND THEN
+        INSERT INTO daily (upload, download, ip, date) VALUES (m_upload, m_download, m_ip, m_date);
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
+CREATE FUNCTION upsert_hourly(m_ip varchar(16), m_time timestamp, m_upload integer, m_download integer) RETURNS VOID AS
+$$
+BEGIN
+    UPDATE hourly SET upload = m_upload, download = m_download WHERE ip = m_ip AND time = m_time;
+    IF NOT FOUND THEN
+        INSERT INTO hourly (upload, download, ip, time) VALUES (m_upload, m_download, m_ip, m_time);
+    END IF;
+END;
+$$
+LANGUAGE plpgsql;
+
