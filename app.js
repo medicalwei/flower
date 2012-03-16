@@ -55,19 +55,19 @@
     };
 
     DataStorage.prototype.getDataFromDate = function(date, callback) {
-      return this.db.query("SELECT * FROM daily WHERE date = $1", [date], callback);
+      return this.db.query("SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback);
     };
 
-    DataStorage.prototype.getDataFromIP = function(ip, count, callback) {
-      return this.db.query("SELECT * FROM daily WHERE ip = $1 LIMIT $2", [ip], callback);
+    DataStorage.prototype.getDataFromIP = function(ip, offset, limit, callback) {
+      return this.db.query("SELECT * FROM daily WHERE ip = $1 ORDER BY date DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback);
     };
 
     DataStorage.prototype.getData = function(ip, date, callback) {
       return this.db.query("SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback);
     };
 
-    DataStorage.prototype.getHourlyData = function(ip, count, callback) {
-      return this.db.query("SELECT * FROM hourly WHERE ip = $1 LIMIT $2", [ip, count], callback);
+    DataStorage.prototype.getHourlyData = function(ip, offset, limit, callback) {
+      return this.db.query("SELECT * FROM hourly WHERE ip = $1 ORDER BY time DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback);
     };
 
     DataStorage.prototype.getLatestDailyData = function(callback) {
@@ -329,8 +329,8 @@
     }
     ipData = collection.getIp(ip);
     if (ipData) {
-      return dataStorage.getHourlyData(ip, 30, function(error, data) {
-        var historyPlot, row, _i, _len, _ref;
+      return dataStorage.getHourlyData(ip, 1, 29, function(error, data) {
+        var historyPlot, hourlyIpData, row, _i, _len, _ref;
         historyPlot = [
           {
             label: 'Download',
@@ -340,12 +340,15 @@
             data: []
           }
         ];
+        hourlyIpData = hourlyCollection.getIp(ip, true);
         _ref = data.rows;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           row = _ref[_i];
-          historyPlot[0].data[hour] = [row.time, row.download / 1048576];
-          historyPlot[1].data[hour] = [row.time, row.upload / 1048576];
+          historyPlot[0].data.push([row.time, row.download / 1048576]);
+          historyPlot[1].data.push([row.time, row.upload / 1048576]);
         }
+        historyPlot[0].data.push([hourlyCollection.time, hourlyIpData.download / 1048576]);
+        historyPlot[1].data.push([hourlyCollection.time, hourlyIpData.upload / 1048576]);
         return res.render('ip', {
           ip: ip,
           ipData: ipData,

@@ -35,13 +35,13 @@ class DataStorage
         @db.query "INSERT INTO hourly ('upload', 'download', 'ip', 'time') VALUES ($1, $2, $3, $4)",
           [data.upload, data.download, ip, collection.time]
   getDataFromDate: (date, callback) ->
-    @db.query "SELECT * FROM daily WHERE date = $1", [date], callback
-  getDataFromIP: (ip, count, callback) ->
-    @db.query "SELECT * FROM daily WHERE ip = $1 LIMIT $2", [ip], callback
+    @db.query "SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback
+  getDataFromIP: (ip, offset, limit, callback) ->
+    @db.query "SELECT * FROM daily WHERE ip = $1 ORDER BY date DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback
   getData: (ip, date, callback) ->
     @db.query "SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback
-  getHourlyData: (ip, count, callback) ->
-    @db.query "SELECT * FROM hourly WHERE ip = $1 LIMIT $2", [ip, count], callback
+  getHourlyData: (ip, offset, limit, callback) ->
+    @db.query "SELECT * FROM hourly WHERE ip = $1 ORDER BY time DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback
   getLatestDailyData: (callback) ->
     date = new Date
     date.setHours(0,0,0,0)
@@ -223,11 +223,15 @@ app.get '/:ip', (req, res, next) ->
   ipData = collection.getIp ip
 
   if ipData
-    dataStorage.getHourlyData ip, 30, (error, data) ->
+    dataStorage.getHourlyData ip, 1, 29, (error, data) ->
       historyPlot=[{label: 'Download', data: []}, {label: 'Upload', data: []}]
+      hourlyIpData = hourlyCollection.getIp ip, true # tolerant here
       for row in data.rows
-        historyPlot[0].data[hour] = [row.time, row.download/1048576]
-        historyPlot[1].data[hour] = [row.time, row.upload/1048576]
+        historyPlot[0].data.push [row.time, row.download/1048576]
+        historyPlot[1].data.push [row.time, row.upload/1048576]
+      historyPlot[0].data.push [hourlyCollection.time, hourlyIpData.download/1048576]
+      historyPlot[1].data.push [hourlyCollection.time, hourlyIpData.upload/1048576]
+      
       res.render 'ip', { ip: ip, ipData: ipData, historyPlot: historyPlot }
   else
     next()
