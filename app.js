@@ -39,7 +39,7 @@
         data = _ref[ip];
         result = this.db.query("UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4", [data.upload, data.download, ip, collection.date]);
         if (result.rowCount === 0) {
-          this.db.query("INSERT INTO daily ('upload', 'download', 'ip', 'date') VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.date]);
+          this.db.query("INSERT INTO daily (upload, download, ip, date) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.date]);
         }
       }
       _ref2 = hourlyCollection.data;
@@ -48,7 +48,7 @@
         data = _ref2[ip];
         result = this.db.query("UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4", [data.upload, data.download, ip, collection.time]);
         if (result.rowCount === 0) {
-          _results.push(this.db.query("INSERT INTO hourly ('upload', 'download', 'ip', 'time') VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.time]));
+          _results.push(this.db.query("INSERT INTO hourly (upload, download, ip, time) VALUES ($1, $2, $3, $4)", [data.upload, data.download, ip, collection.time]));
         } else {
           _results.push(void 0);
         }

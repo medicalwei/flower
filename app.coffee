@@ -25,14 +25,14 @@ class DataStorage
       result = @db.query "UPDATE daily SET upload = $1, download = $2 WHERE ip = $3 AND date = $4",
         [data.upload, data.download, ip, collection.date]
       if result.rowCount == 0
-        @db.query "INSERT INTO daily ('upload', 'download', 'ip', 'date') VALUES ($1, $2, $3, $4)",
+        @db.query "INSERT INTO daily (upload, download, ip, date) VALUES ($1, $2, $3, $4)",
           [data.upload, data.download, ip, collection.date]
 
     for ip, data of hourlyCollection.data
       result = @db.query "UPDATE hourly SET upload = $1, download = $2 WHERE ip = $3 AND time = $4",
         [data.upload, data.download, ip, collection.time]
       if result.rowCount == 0
-        @db.query "INSERT INTO hourly ('upload', 'download', 'ip', 'time') VALUES ($1, $2, $3, $4)",
+        @db.query "INSERT INTO hourly (upload, download, ip, time) VALUES ($1, $2, $3, $4)",
           [data.upload, data.download, ip, collection.time]
   getDataFromDate: (date, callback) ->
     @db.query "SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback
