@@ -354,6 +354,8 @@
           historyPlot[0].data.push([time, row.download / 1048576]);
           historyPlot[1].data.push([time, row.upload / 1048576]);
         }
+        historyPlot[0].data.reverse();
+        historyPlot[1].data.reverse();
         time = hourlyCollection.time.getTime();
         historyPlot[0].data.push([time, hourlyIpData.download / 1048576]);
         historyPlot[1].data.push([time, hourlyIpData.upload / 1048576]);

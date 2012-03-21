@@ -240,6 +240,11 @@ app.get '/:ip', (req, res, next) ->
         time = row.time.getTime();
         historyPlot[0].data.push [time, row.download/1048576]
         historyPlot[1].data.push [time, row.upload/1048576]
+
+      # reverse the array to get the corrected order
+      historyPlot[0].data.reverse();
+      historyPlot[1].data.reverse();
+
       time = hourlyCollection.time.getTime();
       historyPlot[0].data.push [time, hourlyIpData.download/1048576]
       historyPlot[1].data.push [time, hourlyIpData.upload/1048576]
