@@ -14,13 +14,11 @@ pg = require 'pg'
 app = module.exports = express.createServer()
  
 # postgresql database
-# TODO
 class DataStorage
   constructor: (databaseUri, callback) ->
     @db = new pg.Client(databaseUri)
     @db.connect callback
   upsertData: (dailyCollection, hourlyCollection) ->
-    #TODO
     if collection.rotated
       dailyData = collection.oldData
       hourlyData = hourlyCollection.oldData
