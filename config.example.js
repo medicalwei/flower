@@ -15,18 +15,15 @@ exports.outboundInterface = 0x0017;
 // postgresql database uri
 exports.databaseUri = "tcp://someone:meow@localhost/flower";
 
+var matcher = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 // valid ip rule
 exports.ipRule = function(ip) {
-  var s = ip.split(".");
-  var c = [];
-  c[0] = parseInt(s[0]);
-  c[1] = parseInt(s[1]);
-  c[2] = parseInt(s[2]);
-  c[3] = parseInt(s[3]);
-  return (c[0] == 127 &&
-          c[1] == 0 &&
-          c[2] >= 0 && c[2] <= 255 &&
-          c[3] >= 1 && c[3] <= 254);
+  var c = matcher.exec(ip);
+  if (!c) return false;
+  return (c[1] == 127 &&
+          c[2] == 0 &&
+          c[3] >= 0 && c[3] <= 255 &&
+          c[4] >= 1 && c[4] <= 254);
 }
 
 // banning rule
