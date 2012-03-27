@@ -1,4 +1,3 @@
-prevIdx = null
 window.startPlot = (jqObj, data) ->
   $.plot jqObj, data, {
     series: {stack: 0, lines: {show: false, steps: false}, bars: {show: true, barWidth: 1*60*60*1000}},
@@ -11,8 +10,8 @@ window.startPlot = (jqObj, data) ->
 
   $("#graph").bind "multihighlighted", (event, pos, items) ->
     idx = items[0].dataIndex
-    if prevIdx != idx
-      prevIdx = idx
+    if window.prevIdx != idx
+      window.prevIdx = idx
       download = data[0].data[idx][1]
       upload = data[1].data[idx][1]
       total = upload + download
@@ -22,7 +21,7 @@ window.startPlot = (jqObj, data) ->
 
   $("#graph").bind "unmultihighlighted", (event, pos, items) ->
     removeTooltipOnCursor()
-    prevIdx = null
+    window.prevIdx = null
 
 binaryTickGenerator = (axis) ->
   res = []

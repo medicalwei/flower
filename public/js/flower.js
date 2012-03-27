@@ -1,7 +1,5 @@
 (function() {
-  var binaryTickGenerator, prevIdx, removeTooltipOnCursor, setTooltipOnCursor, suffixFormatter, timeFormatter;
-
-  prevIdx = null;
+  var binaryTickGenerator, removeTooltipOnCursor, setTooltipOnCursor, suffixFormatter, timeFormatter;
 
   window.startPlot = function(jqObj, data) {
     $.plot(jqObj, data, {
@@ -36,8 +34,8 @@
     $("#graph").bind("multihighlighted", function(event, pos, items) {
       var download, idx, total, upload;
       idx = items[0].dataIndex;
-      if (prevIdx !== idx) {
-        prevIdx = idx;
+      if (window.prevIdx !== idx) {
+        window.prevIdx = idx;
         download = data[0].data[idx][1];
         upload = data[1].data[idx][1];
         total = upload + download;
@@ -46,7 +44,7 @@
     });
     return $("#graph").bind("unmultihighlighted", function(event, pos, items) {
       removeTooltipOnCursor();
-      return prevIdx = null;
+      return window.prevIdx = null;
     });
   };
 

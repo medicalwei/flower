@@ -46,8 +46,8 @@
       return this.db.query("SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback);
     };
 
-    DataStorage.prototype.getHourlyData = function(ip, since, offset, callback) {
-      return this.db.query("SELECT * FROM hourly WHERE ip = $1 AND time >= $2 ORDER BY time DESC OFFSET $3", [ip, since, offset], callback);
+    DataStorage.prototype.getHourlyData = function(ip, since, to, callback) {
+      return this.db.query("SELECT * FROM hourly WHERE ip = $1 AND time >= $2 AND time < $3 ORDER BY time DESC", [ip, since, to], callback);
     };
 
     DataStorage.prototype.getLatestDailyData = function(callback) {
@@ -61,6 +61,7 @@
       var date;
       date = new Date;
       date.setMinutes(0, 0, 0);
+      console.log(date);
       return this.db.query("SELECT * FROM hourly WHERE time = $1", [date], callback);
     };
 
@@ -234,6 +235,7 @@
       collection = this;
       return this.dataStorage.getLatestHourlyData(function(error, result) {
         var data, _i, _len, _ref;
+        console.log(result);
         _ref = result.rows;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           data = _ref[_i];
@@ -244,12 +246,12 @@
     };
 
     HourlyCollection.prototype.getHistoryPlot = function(ip, callback) {
-      var hourlyIpData, since, time;
+      var hourlyIpData, recordingTime, since;
       hourlyIpData = this.getIp(ip);
-      time = this.date.getTime();
-      since = new Date(time - 86400000);
-      return this.dataStorage.getHourlyData(ip, since, 1, function(error, data) {
-        var historyPlot, row, _i, _len, _ref;
+      recordingTime = this.date.getTime();
+      since = new Date(recordingTime - 86400000);
+      return this.dataStorage.getHourlyData(ip, since, this.date, function(error, data) {
+        var historyPlot, row, time, _i, _len, _ref;
         historyPlot = [
           {
             label: 'Download',
@@ -268,8 +270,8 @@
         }
         historyPlot[0].data.reverse();
         historyPlot[1].data.reverse();
-        historyPlot[0].data.push([time, hourlyIpData.download / 1048576]);
-        historyPlot[1].data.push([time, hourlyIpData.upload / 1048576]);
+        historyPlot[0].data.push([recordingTime, hourlyIpData.download / 1048576]);
+        historyPlot[1].data.push([recordingTime, hourlyIpData.upload / 1048576]);
         return callback(historyPlot);
       });
     };

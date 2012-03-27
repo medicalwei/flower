@@ -24,8 +24,8 @@ class DataStorage
   getData: (ip, date, callback) ->
     @db.query "SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback
 
-  getHourlyData: (ip, since, offset, callback) ->
-    @db.query "SELECT * FROM hourly WHERE ip = $1 AND time >= $2 ORDER BY time DESC OFFSET $3", [ip, since, offset], callback
+  getHourlyData: (ip, since, to, callback) ->
+    @db.query "SELECT * FROM hourly WHERE ip = $1 AND time >= $2 AND time < $3 ORDER BY time DESC", [ip, since, to], callback
 
   getLatestDailyData: (callback) ->
     date = new Date
@@ -137,10 +137,10 @@ class HourlyCollection extends Collection
 
   getHistoryPlot: (ip, callback)->
     hourlyIpData = @getIp ip
-    time = @date.getTime()
-    since = new Date(time - 86400000)
+    recordingTime = @date.getTime()
+    since = new Date(recordingTime-86400000)
 
-    @dataStorage.getHourlyData ip, since, 1, (error, data) ->
+    @dataStorage.getHourlyData ip, since, @date, (error, data) ->
       historyPlot=[{label: 'Download', data: []}, {label: 'Upload', data: []}]
       for row in data.rows
         time = row.time.getTime()
@@ -151,8 +151,8 @@ class HourlyCollection extends Collection
       historyPlot[0].data.reverse()
       historyPlot[1].data.reverse()
 
-      historyPlot[0].data.push [time, hourlyIpData.download/1048576]
-      historyPlot[1].data.push [time, hourlyIpData.upload/1048576]
+      historyPlot[0].data.push [recordingTime, hourlyIpData.download/1048576]
+      historyPlot[1].data.push [recordingTime, hourlyIpData.upload/1048576]
 
       callback (historyPlot)
 
