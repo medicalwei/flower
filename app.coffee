@@ -41,6 +41,10 @@ io.sockets.on 'connection', (socket) ->
     if config.ipRule data.ip
       socket.set 'ip', data.ip, ->
         pushingIps[data.ip] = socket
+  socket.on 'update graph', ->
+    socket.get 'ip', (error, ip) ->
+      model.hourly.getHistoryPlot ip, (historyPlot) ->
+        socket.emit 'graph update', historyPlot
   socket.on 'disconnect', ->
     socket.get 'ip', (error, ip) ->
       delete pushingIps[ip] if ip in pushingIps
@@ -82,10 +86,10 @@ netflowClient.on "message", (mesg, rinfo) ->
         updatedIps[ip] = 1
 
         # TODO: do banning in packet receiving event
-      
+
       for ip of pushingIps
-        if ip in updatedIps
-          pushingIps[ip].emit 'update', model.daily.getIp(ip)
+        if ip of updatedIps
+          pushingIps[ip].volatile.emit 'update', model.daily.getIp(ip)
 
   catch err
     console.error "* error receiving Netflow message: #{err}"
@@ -93,6 +97,7 @@ netflowClient.on "message", (mesg, rinfo) ->
 # Some global variables used for view
 global.views = {
   siteName: config.siteName
+  siteUri: config.siteUri
   # TODO sidebar: 
 }
 

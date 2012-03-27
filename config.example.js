@@ -4,6 +4,7 @@ flower configurations
 
 // the web viewer title
 exports.siteName = "Dormitory flow";
+exports.siteUri = "http://localhost:3000";
 
 // Ports
 exports.netflowPort = 9991;

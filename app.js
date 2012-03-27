@@ -59,6 +59,13 @@
         });
       }
     });
+    socket.on('update graph', function() {
+      return socket.get('ip', function(error, ip) {
+        return model.hourly.getHistoryPlot(ip, function(historyPlot) {
+          return socket.emit('graph update', historyPlot);
+        });
+      });
+    });
     return socket.on('disconnect', function() {
       return socket.get('ip', function(error, ip) {
         if (__indexOf.call(pushingIps, ip) >= 0) return delete pushingIps[ip];
@@ -104,8 +111,8 @@
         }
         _results = [];
         for (ip in pushingIps) {
-          if (__indexOf.call(updatedIps, ip) >= 0) {
-            _results.push(pushingIps[ip].emit('update', model.daily.getIp(ip)));
+          if (ip in updatedIps) {
+            _results.push(pushingIps[ip].volatile.emit('update', model.daily.getIp(ip)));
           } else {
             _results.push(void 0);
           }
@@ -118,7 +125,8 @@
   });
 
   global.views = {
-    siteName: config.siteName
+    siteName: config.siteName,
+    siteUri: config.siteUri
   };
 
   app.get('/', function(req, res) {

@@ -25,11 +25,11 @@
     };
 
     DataStorage.prototype.upsertHourlyData = function(data, date) {
-      var ip, result, _results;
+      var datum, ip, result, _results;
       _results = [];
       for (ip in data) {
-        data = data[ip];
-        _results.push(result = this.db.query("SELECT upsert_hourly($1, $2, $3, $4)", [ip, date, data.upload, data.download]));
+        datum = data[ip];
+        _results.push(result = this.db.query("SELECT upsert_hourly($1, $2, $3, $4)", [ip, date, datum.upload, datum.download]));
       }
       return _results;
     };
@@ -38,16 +38,16 @@
       return this.db.query("SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback);
     };
 
-    DataStorage.prototype.getDataFromIP = function(ip, offset, limit, callback) {
-      return this.db.query("SELECT * FROM daily WHERE ip = $1 ORDER BY date DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback);
+    DataStorage.prototype.getDataFromIP = function(ip, since, offset, callback) {
+      return this.db.query("SELECT * FROM daily WHERE ip = $1 AND date >= $2 ORDER BY date DESC OFFSET $3", [ip, since, offset], callback);
     };
 
     DataStorage.prototype.getData = function(ip, date, callback) {
       return this.db.query("SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback);
     };
 
-    DataStorage.prototype.getHourlyData = function(ip, offset, limit, callback) {
-      return this.db.query("SELECT * FROM hourly WHERE ip = $1 ORDER BY time DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback);
+    DataStorage.prototype.getHourlyData = function(ip, since, offset, callback) {
+      return this.db.query("SELECT * FROM hourly WHERE ip = $1 AND time >= $2 ORDER BY time DESC OFFSET $3", [ip, since, offset], callback);
     };
 
     DataStorage.prototype.getLatestDailyData = function(callback) {
@@ -168,7 +168,7 @@
 
     DailyCollection.prototype.save = function() {
       var data, date;
-      if (collection.rotated) {
+      if (this.rotated) {
         data = this.oldData;
         date = this.oldDate;
       } else {
@@ -176,7 +176,7 @@
         date = this.date;
       }
       this.dataStorage.upsertDailyData(data, date);
-      return collection.deleteOld();
+      return this.deleteOld();
     };
 
     DailyCollection.prototype.restore = function(callback) {
@@ -216,7 +216,7 @@
 
     HourlyCollection.prototype.save = function() {
       var data, date;
-      if (collection.rotated) {
+      if (this.rotated) {
         data = this.oldData;
         date = this.oldDate;
       } else {
@@ -224,7 +224,7 @@
         date = this.date;
       }
       this.dataStorage.upsertHourlyData(data, date);
-      return collection.deleteOld();
+      return this.deleteOld();
     };
 
     HourlyCollection.prototype.restore = function(callback) {
@@ -240,10 +240,11 @@
     };
 
     HourlyCollection.prototype.getHistoryPlot = function(ip, callback) {
-      var hourlyIpData, time;
+      var hourlyIpData, since, time;
       hourlyIpData = this.getIp(ip);
       time = this.date.getTime();
-      return this.dataStorage.getHourlyData(ip, 1, 29, function(error, data) {
+      since = new Date(time - 86400000);
+      return this.dataStorage.getHourlyData(ip, since, 1, function(error, data) {
         var historyPlot, row, _i, _len, _ref;
         historyPlot = [
           {

@@ -23,7 +23,7 @@ div.row
     div#graph
 script
   var plotData=!{JSON.stringify(historyPlot)};
-  var socket = io.connect('http://localhost:3000');
+  var socket = io.connect("#{views.siteUri}");
   startPlot($("#graph"), plotData);
 
   socket.on('ready', function () {
@@ -31,7 +31,12 @@ script
   });
   socket.on('update', function(data) {
     var total = data.download + data.upload;
-    $("#download").text(data.download.toFixed(2));
-    $("#upload").text(data.upload.toFixed(2));
-    $("#total").text(total.toFixed(2));
+    $("#download").text((data.download/1048576).toFixed(2));
+    $("#upload").text((data.upload/1048576).toFixed(2));
+    $("#total").text((total/1048576).toFixed(2));
+  });
+  setInterval(function(){socket.emit('update graph');}, 60000);
+  socket.on('graph update', function(data) {
+    plotData = data;
+    startPlot($("#graph"), plotData);
   });

@@ -11,21 +11,21 @@ class DataStorage
         [ip, date, datum.upload, datum.download]
 
   upsertHourlyData: (data, date) ->
-    for ip, data of data
+    for ip, datum of data
       result = @db.query "SELECT upsert_hourly($1, $2, $3, $4)",
-        [ip, date, data.upload, data.download]
+        [ip, date, datum.upload, datum.download]
     
   getDataFromDate: (date, callback) ->
     @db.query "SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback
 
-  getDataFromIP: (ip, offset, limit, callback) ->
-    @db.query "SELECT * FROM daily WHERE ip = $1 ORDER BY date DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback
+  getDataFromIP: (ip, since, offset, callback) ->
+    @db.query "SELECT * FROM daily WHERE ip = $1 AND date >= $2 ORDER BY date DESC OFFSET $3", [ip, since, offset], callback
 
   getData: (ip, date, callback) ->
     @db.query "SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback
 
-  getHourlyData: (ip, offset, limit, callback) ->
-    @db.query "SELECT * FROM hourly WHERE ip = $1 ORDER BY time DESC OFFSET $2 LIMIT $3", [ip, offset, limit], callback
+  getHourlyData: (ip, since, offset, callback) ->
+    @db.query "SELECT * FROM hourly WHERE ip = $1 AND time >= $2 ORDER BY time DESC OFFSET $3", [ip, since, offset], callback
 
   getLatestDailyData: (callback) ->
     date = new Date
@@ -93,14 +93,14 @@ class DailyCollection extends Collection
     super date
 
   save: ->
-    if collection.rotated
+    if @rotated
       data = @oldData
       date = @oldDate
     else
       data = @data
       date = @date
     @dataStorage.upsertDailyData data, date
-    collection.deleteOld()
+    @deleteOld()
 
   restore: (callback) ->
     @dataStorage.getLatestDailyData (error, result) ->
@@ -119,14 +119,14 @@ class HourlyCollection extends Collection
     super date
 
   save: ->
-    if collection.rotated
+    if @rotated
       data = @oldData
       date = @oldDate
     else
       data = @data
       date = @date
     @dataStorage.upsertHourlyData data, date
-    collection.deleteOld()
+    @deleteOld()
 
   restore: (callback) ->
     @dataStorage.getLatestHourlyData (error, result) ->
@@ -136,8 +136,9 @@ class HourlyCollection extends Collection
   getHistoryPlot: (ip, callback)->
     hourlyIpData = @getIp ip
     time = @date.getTime()
+    since = new Date(time - 86400000)
 
-    @dataStorage.getHourlyData ip, 1, 29, (error, data) ->
+    @dataStorage.getHourlyData ip, since, 1, (error, data) ->
       historyPlot=[{label: 'Download', data: []}, {label: 'Upload', data: []}]
       for row in data.rows
         time = row.time.getTime()
