@@ -10,6 +10,7 @@ NetflowPacket = require 'NetFlowPacket'
 app = module.exports = express.createServer()
 model = require './model'
 cronJob = require('cron').CronJob
+io = require('socket.io').listen(app)
  
 # Configuration
 
@@ -21,10 +22,9 @@ app.configure ->
   app.use app.router
   app.use express.static(__dirname + '/public')
 
+# add dummy data on development mode
 app.configure 'development', ->
   app.use express.errorHandler({ dumpExceptions: true, showStack: true })
-
-  # add dummy data
   dummy = model.daily.getIp "127.0.0.1"
   dummy.upload   = 123456789
   dummy.download = 987654321
@@ -32,14 +32,26 @@ app.configure 'development', ->
 app.configure 'production', ->
   app.use express.errorHandler()
 
+
+# socket.io processes
+pushingIps = {}
+io.sockets.on 'connection', (socket) ->
+  socket.emit 'ready'
+  socket.on 'set ip', (data) ->
+    if config.ipRule data.ip
+      socket.set 'ip', data.ip, ->
+        pushingIps[data.ip] = socket
+  socket.on 'disconnect', ->
+    socket.get 'ip', (error, ip) ->
+      delete pushingIps[ip] if ip in pushingIps
+
 # Packet receiving event
-
 netflowClient = dgram.createSocket "udp4"
-
 netflowClient.on "message", (mesg, rinfo) ->
   try
     packet = new NetflowPacket mesg
     if packet.header.version == 5
+      updatedIps = {}
       for flow in packet.v5Flows
         if flow.input == config.outboundInterface
           # this flow means download
@@ -67,21 +79,24 @@ netflowClient.on "message", (mesg, rinfo) ->
             ipData.addDownload bytes
             hourlyIpData.addDownload bytes
 
+        updatedIps[ip] = 1
+
         # TODO: do banning in packet receiving event
+      
+      for ip of pushingIps
+        if ip in updatedIps
+          pushingIps[ip].emit 'update', model.daily.getIp(ip)
 
   catch err
     console.error "* error receiving Netflow message: #{err}"
 
-
 # Some global variables used for view
-
 global.views = {
   siteName: config.siteName
   # TODO sidebar: 
 }
 
 # Routes
-
 app.get '/', (req, res) ->
   remoteIp = req.connection.remoteAddress
   if config.ipRule remoteIp
@@ -118,7 +133,7 @@ app.get '/:ip/log/:year/:month', (req, res) ->
 
 app.get '/:ip/log/:year/:month/:day', (req, res) ->
   # get from a single day.
-
+    
 # Restore values from database, and launch the system.
 loadDatabase = (callback)->
   model.daily.restore ->

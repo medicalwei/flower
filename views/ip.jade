@@ -4,17 +4,34 @@ div.page-header
 div.row
   div.total.span8
     h2 Total
-    div.number #{ipData.getTotalString()} MiB
+    div.number 
+      span#total=ipData.getTotalString()
+      | MiB
   div.updown.span4
     h2 Download
-    div.number #{ipData.getDownloadString()} MiB
+    div.number 
+      span#download=ipData.getDownloadString()
+      | MiB
     h2 Upload
-    div.number #{ipData.getUploadString()} MiB
+    div.number
+      span#upload=ipData.getUploadString()
+      | MiB
 div.row
   div.span12
     h2 Hourly view
     noscript Please enable JavaScript for graph plotting.
     div#graph
-    script
-      var plotData=!{JSON.stringify(historyPlot)};
-      startPlot($("#graph"), plotData);
+script
+  var plotData=!{JSON.stringify(historyPlot)};
+  var socket = io.connect('http://localhost:3000');
+  startPlot($("#graph"), plotData);
+
+  socket.on('ready', function () {
+    socket.emit('set ip', { ip: "#{ip}" });
+  });
+  socket.on('update', function(data) {
+    var total = data.download + data.upload;
+    $("#download").text(data.download.toFixed(2));
+    $("#upload").text(data.upload.toFixed(2));
+    $("#total").text(total.toFixed(2));
+  });

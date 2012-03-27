@@ -5,7 +5,8 @@
 */
 
 (function() {
-  var NetflowPacket, app, config, cronJob, dgram, express, launch, loadDatabase, model, netflowClient, setupCronJobs;
+  var NetflowPacket, app, config, cronJob, dgram, express, io, launch, loadDatabase, model, netflowClient, pushingIps, setupCronJobs,
+    __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   config = require('./config');
 
@@ -20,6 +21,8 @@
   model = require('./model');
 
   cronJob = require('cron').CronJob;
+
+  io = require('socket.io').listen(app);
 
   app.configure(function() {
     app.set('views', __dirname + '/views');
@@ -45,15 +48,33 @@
     return app.use(express.errorHandler());
   });
 
+  pushingIps = {};
+
+  io.sockets.on('connection', function(socket) {
+    socket.emit('ready');
+    socket.on('set ip', function(data) {
+      if (config.ipRule(data.ip)) {
+        return socket.set('ip', data.ip, function() {
+          return pushingIps[data.ip] = socket;
+        });
+      }
+    });
+    return socket.on('disconnect', function() {
+      return socket.get('ip', function(error, ip) {
+        if (__indexOf.call(pushingIps, ip) >= 0) return delete pushingIps[ip];
+      });
+    });
+  });
+
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, flow, hourlyIpData, ip, ipData, packet, status, _i, _len, _ref, _results;
+    var bytes, flow, hourlyIpData, ip, ipData, packet, status, updatedIps, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
       if (packet.header.version === 5) {
+        updatedIps = {};
         _ref = packet.v5Flows;
-        _results = [];
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           flow = _ref[_i];
           if (flow.input === config.outboundInterface) {
@@ -73,14 +94,20 @@
           switch (status) {
             case "upload":
               ipData.addUpload(bytes);
-              _results.push(hourlyIpData.addUpload(bytes));
+              hourlyIpData.addUpload(bytes);
               break;
             case "download":
               ipData.addDownload(bytes);
-              _results.push(hourlyIpData.addDownload(bytes));
-              break;
-            default:
-              _results.push(void 0);
+              hourlyIpData.addDownload(bytes);
+          }
+          updatedIps[ip] = 1;
+        }
+        _results = [];
+        for (ip in pushingIps) {
+          if (__indexOf.call(updatedIps, ip) >= 0) {
+            _results.push(pushingIps[ip].emit('update', model.daily.getIp(ip)));
+          } else {
+            _results.push(void 0);
           }
         }
         return _results;
