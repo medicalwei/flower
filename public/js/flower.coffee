@@ -1,4 +1,8 @@
 window.startPlot = (jqObj, data) ->
+  # nuke all the things
+  jqObj.unbind()
+  jqObj.empty()
+
   $.plot jqObj, data, {
     series: {stack: 0, lines: {show: false, steps: false}, bars: {show: true, barWidth: 1*60*60*1000}},
     grid: {hoverable: true, autoHighlight: false},
@@ -7,8 +11,7 @@ window.startPlot = (jqObj, data) ->
     multihighlight: {mode: 'x', hoverMode: 'bar'}
   }
 
-
-  $("#graph").bind "multihighlighted", (event, pos, items) ->
+  jqObj.bind "multihighlighted", (event, pos, items) ->
     idx = items[0].dataIndex
     if window.prevIdx != idx
       window.prevIdx = idx
@@ -19,7 +22,7 @@ window.startPlot = (jqObj, data) ->
                          "<i class='icon-download'></i> #{download.toFixed(2)} MiB<br/>"+
                          "<i class='icon-upload'></i> #{upload.toFixed(2)} MiB"
 
-  $("#graph").bind "unmultihighlighted", (event, pos, items) ->
+  jqObj.bind "unmultihighlighted", (event, pos, items) ->
     removeTooltipOnCursor()
     window.prevIdx = null
 

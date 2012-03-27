@@ -5,16 +5,16 @@ div.row
   div.total.span8
     h2 Total
     div.number 
-      span#total=ipData.getTotalString()
+      span#total #{ipData.getTotalString()} 
       | MiB
   div.updown.span4
     h2 Download
     div.number 
-      span#download=ipData.getDownloadString()
+      span#download #{ipData.getDownloadString()} 
       | MiB
     h2 Upload
     div.number
-      span#upload=ipData.getUploadString()
+      span#upload #{ipData.getUploadString()} 
       | MiB
 div.row
   div.span12
@@ -22,9 +22,8 @@ div.row
     noscript Please enable JavaScript for graph plotting.
     div#graph
 script
-  var plotData=!{JSON.stringify(historyPlot)};
   var socket = io.connect("#{views.siteUri}");
-  startPlot($("#graph"), plotData);
+  startPlot($("#graph"), !{JSON.stringify(historyPlot)});
 
   socket.on('ready', function () {
     socket.emit('set ip', { ip: "#{ip}" });
@@ -37,6 +36,5 @@ script
   });
   setInterval(function(){socket.emit('update graph');}, 60000);
   socket.on('graph update', function(data) {
-    plotData = data;
-    startPlot($("#graph"), plotData);
+    startPlot($("#graph"), data);
   });

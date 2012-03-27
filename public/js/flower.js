@@ -2,6 +2,8 @@
   var binaryTickGenerator, removeTooltipOnCursor, setTooltipOnCursor, suffixFormatter, timeFormatter;
 
   window.startPlot = function(jqObj, data) {
+    jqObj.unbind();
+    jqObj.empty();
     $.plot(jqObj, data, {
       series: {
         stack: 0,
@@ -31,7 +33,7 @@
         hoverMode: 'bar'
       }
     });
-    $("#graph").bind("multihighlighted", function(event, pos, items) {
+    jqObj.bind("multihighlighted", function(event, pos, items) {
       var download, idx, total, upload;
       idx = items[0].dataIndex;
       if (window.prevIdx !== idx) {
@@ -42,7 +44,7 @@
         return setTooltipOnCursor(("" + (total.toFixed(2)) + " MiB<br/>") + ("<i class='icon-download'></i> " + (download.toFixed(2)) + " MiB<br/>") + ("<i class='icon-upload'></i> " + (upload.toFixed(2)) + " MiB"));
       }
     });
-    return $("#graph").bind("unmultihighlighted", function(event, pos, items) {
+    return jqObj.bind("unmultihighlighted", function(event, pos, items) {
       removeTooltipOnCursor();
       return window.prevIdx = null;
     });

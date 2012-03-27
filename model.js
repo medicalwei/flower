@@ -61,7 +61,6 @@
       var date;
       date = new Date;
       date.setMinutes(0, 0, 0);
-      console.log(date);
       return this.db.query("SELECT * FROM hourly WHERE time = $1", [date], callback);
     };
 
@@ -235,7 +234,6 @@
       collection = this;
       return this.dataStorage.getLatestHourlyData(function(error, result) {
         var data, _i, _len, _ref;
-        console.log(result);
         _ref = result.rows;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           data = _ref[_i];
