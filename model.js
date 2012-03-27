@@ -180,12 +180,14 @@
     };
 
     DailyCollection.prototype.restore = function(callback) {
+      var collection;
+      collection = this;
       return this.dataStorage.getLatestDailyData(function(error, result) {
-        var data, ip, _i, _len, _ref;
+        var data, _i, _len, _ref;
         _ref = result.rows;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           data = _ref[_i];
-          ip = this.setIp(data.ip, data.upload, data.download);
+          collection.setIp(data.ip, data.upload, data.download);
         }
         if (callback) return callback();
       });
@@ -228,12 +230,14 @@
     };
 
     HourlyCollection.prototype.restore = function(callback) {
+      var collection;
+      collection = this;
       return this.dataStorage.getLatestHourlyData(function(error, result) {
-        var data, ip, _i, _len, _ref;
+        var data, _i, _len, _ref;
         _ref = result.rows;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           data = _ref[_i];
-          ip = this.setIp(data.ip, data.upload, data.download);
+          collection.setIp(data.ip, data.upload, data.download);
         }
         if (callback) return callback();
       });

@@ -103,8 +103,9 @@ class DailyCollection extends Collection
     @deleteOld()
 
   restore: (callback) ->
+    collection = this
     @dataStorage.getLatestDailyData (error, result) ->
-      ip = @setIp data.ip, data.upload, data.download for data in result.rows
+      collection.setIp data.ip, data.upload, data.download for data in result.rows
       callback() if callback
 
 class HourlyCollection extends Collection
@@ -129,8 +130,9 @@ class HourlyCollection extends Collection
     @deleteOld()
 
   restore: (callback) ->
+    collection = this
     @dataStorage.getLatestHourlyData (error, result) ->
-      ip = @setIp data.ip, data.upload, data.download for data in result.rows
+      collection.setIp data.ip, data.upload, data.download for data in result.rows
       callback() if callback
 
   getHistoryPlot: (ip, callback)->
