@@ -5,7 +5,7 @@
 */
 
 (function() {
-  var NetflowPacket, app, config, cronJob, dgram, express, io, launch, loadDatabase, model, netflowClient, pushingIps, setupCronJobs,
+  var NetflowPacket, app, config, cronJob, dgram, express, io, launch, loadDatabase, model, netflowClient, pushingTargets, setupCronJobs,
     __indexOf = Array.prototype.indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   config = require('./config');
@@ -53,14 +53,17 @@
     return io.set('transports', ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling']);
   });
 
-  pushingIps = {};
+  pushingTargets = {};
 
   io.sockets.on('connection', function(socket) {
     socket.emit('ready');
     socket.on('set ip', function(data) {
       if (config.ipRule(data.ip)) {
         return socket.set('ip', data.ip, function() {
-          return pushingIps[data.ip] = socket;
+          return pushingTargets[socket.id] = {
+            ip: data.ip,
+            socket: socket
+          };
         });
       }
     });
@@ -73,7 +76,10 @@
     });
     return socket.on('disconnect', function() {
       return socket.get('ip', function(error, ip) {
-        if (__indexOf.call(pushingIps, ip) >= 0) return delete pushingIps[ip];
+        var _ref;
+        if (_ref = socket.id, __indexOf.call(pushingTargets, _ref) >= 0) {
+          return delete pushingTargets[socket.id];
+        }
       });
     });
   });
@@ -81,7 +87,7 @@
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, flow, hourlyIpData, ip, ipData, packet, status, updatedIps, _i, _len, _ref, _results;
+    var bytes, flow, hourlyIpData, ip, ipData, packet, socketId, status, target, updatedIps, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
       if (packet.header.version === 5) {
@@ -115,9 +121,10 @@
           updatedIps[ip] = 1;
         }
         _results = [];
-        for (ip in pushingIps) {
-          if (ip in updatedIps) {
-            _results.push(pushingIps[ip].volatile.emit('update', model.daily.getIp(ip)));
+        for (socketId in pushingTargets) {
+          target = pushingTargets[socketId];
+          if (target.ip in updatedIps) {
+            _results.push(target.socket.volatile.emit('update', model.daily.getIp(target.ip)));
           } else {
             _results.push(void 0);
           }

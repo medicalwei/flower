@@ -1,21 +1,21 @@
 div.page-header
-  h1 #{ip} 
-    small Live status
+  h1 #{ip}
+    small &nbsp;Live status
 div.row
   div.total.span8
     h2 Total
     div.number 
-      span#total #{ipData.getTotalString()} 
-      | MiB
+      span#total=ipData.getTotalString()
+      | &nbsp;MiB
   div.updown.span4
     h2 Download
     div.number 
-      span#download #{ipData.getDownloadString()} 
-      | MiB
+      span#download=ipData.getDownloadString()
+      | &nbsp;MiB
     h2 Upload
     div.number
-      span#upload #{ipData.getUploadString()} 
-      | MiB
+      span#upload=ipData.getUploadString()
+      | &nbsp;MiB
 div.row
   div.span12
     h2 Hourly view
@@ -29,10 +29,13 @@ script
     socket.emit('set ip', { ip: "#{ip}" });
   });
   socket.on('update', function(data) {
-    var total = data.download + data.upload;
-    $("#download").text((data.download/1048576).toFixed(2));
-    $("#upload").text((data.upload/1048576).toFixed(2));
-    $("#total").text((total/1048576).toFixed(2));
+    var total = ((data.download + data.upload)/1048576).toFixed(2);
+    var download = (data.download/1048576).toFixed(2);
+    var upload = (data.upload/1048576).toFixed(2);
+    $("#total").text(total);
+    $("#download").text(download);
+    $("#upload").text(upload);
+    document.title = total + " MiB";
   });
   setInterval(function(){socket.emit('update graph');}, 60000);
   socket.on('graph update', function(data) {

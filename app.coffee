@@ -40,20 +40,20 @@ app.configure 'production', ->
 
 
 # socket.io events
-pushingIps = {}
+pushingTargets = {}
 io.sockets.on 'connection', (socket) ->
   socket.emit 'ready'
   socket.on 'set ip', (data) ->
     if config.ipRule data.ip
       socket.set 'ip', data.ip, ->
-        pushingIps[data.ip] = socket
+        pushingTargets[socket.id] = {ip: data.ip, socket: socket}
   socket.on 'update graph', ->
     socket.get 'ip', (error, ip) ->
       model.hourly.getHistoryPlot ip, (historyPlot) ->
         socket.emit 'graph update', historyPlot
   socket.on 'disconnect', ->
     socket.get 'ip', (error, ip) ->
-      delete pushingIps[ip] if ip in pushingIps
+      delete pushingTargets[socket.id] if socket.id in pushingTargets
 
 # Packet receiving event
 netflowClient = dgram.createSocket "udp4"
@@ -93,9 +93,9 @@ netflowClient.on "message", (mesg, rinfo) ->
 
         # TODO: do banning in packet receiving event
 
-      for ip of pushingIps
-        if ip of updatedIps
-          pushingIps[ip].volatile.emit 'update', model.daily.getIp(ip)
+      for socketId, target of pushingTargets
+        if target.ip of updatedIps
+          target.socket.volatile.emit 'update', model.daily.getIp(target.ip)
 
   catch err
     console.error "* error receiving Netflow message: #{err}"
