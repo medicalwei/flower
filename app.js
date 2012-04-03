@@ -14,7 +14,7 @@
 
   dgram = require('dgram');
 
-  NetflowPacket = require('NetFlowPacket');
+  NetflowPacket = require('Netflow/lib/NetFlowPacket');
 
   app = module.exports = express.createServer();
 

@@ -7,9 +7,10 @@ flow viewer.
 
 Design
 ------
-* Gathers all Netflow packets and updates on-the-fly.
+* Gathers all Netflow packets and updates on-the-fly 
+  (features socket.io for instant push to client)
 * TODO: Trigger to deal with banned users.
-* For an interval (1 hour), the system writes the data to postgresql
+* For an interval (10 minutes), the system writes the data to postgresql
   database.
 * TODO: The user can check the usage history in daily and hourly
   perspective.
@@ -24,10 +25,11 @@ Prerequisities
 
 Up and running
 --------------
-* TODO: should install NetFlowPacket and postgresql first
-* npm install
-* cp config.example.js config.js
-* edit config.js
-* node app
+* install postgresql (`apt-get install postgresql` in Debian or Ubuntu)
+  then configure its user account and password
+* `npm install`
+* `cp config.example.js config.js`
+* edit config.js for your environment
+* `node app`
 
 It is prefered to use `forever` to run for a long period.

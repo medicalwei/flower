@@ -6,7 +6,7 @@
 config = require './config'
 express = require 'express'
 dgram = require 'dgram'
-NetflowPacket = require 'NetFlowPacket'
+NetflowPacket = require 'Netflow/lib/NetFlowPacket'
 app = module.exports = express.createServer()
 model = require './model'
 cronJob = require('cron').CronJob
