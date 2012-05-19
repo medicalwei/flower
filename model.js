@@ -38,8 +38,11 @@
       return this.db.query("SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback);
     };
 
-    DataStorage.prototype.getDataFromIP = function(ip, since, offset, callback) {
-      return this.db.query("SELECT * FROM daily WHERE ip = $1 AND date >= $2 ORDER BY date DESC OFFSET $3", [ip, since, offset], callback);
+    DataStorage.prototype.getDataFromIP = function(ip, since, callback) {
+      var due;
+      due = new Date(since.getTime());
+      due.setMonth(due.getMonth() + 1);
+      return this.db.query("SELECT * FROM daily WHERE ip = $1 AND date >= $2 AND date < $3 ORDER BY date ASC", [ip, since, due], callback);
     };
 
     DataStorage.prototype.getData = function(ip, date, callback) {
@@ -190,6 +193,13 @@
           collection.setIp(data.ip, data.upload, data.download);
         }
         if (callback) return callback();
+      });
+    };
+
+    DailyCollection.prototype.getHistory = function(ip, month, callback) {
+      console.log(month);
+      return this.dataStorage.getDataFromIP(ip, month, function(error, result) {
+        return callback(error, result);
       });
     };
 

@@ -1,3 +1,17 @@
 div.page-header
-  h1 TODO 
-    small Daily view dummy page
+  h1 Daily record of #{ip}
+table.table
+  thead
+    tr
+      th Date
+      th Total
+      th Upload
+      th Download
+  tbody
+    each row in result
+      tr
+        td=row.date.toString()
+        td=row.upload + row.download
+        td=row.upload
+        td=row.download
+

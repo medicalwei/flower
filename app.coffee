@@ -137,10 +137,24 @@ app.get '/:ip', (req, res, next) ->
     res.render 'ip', { ip: ip, ipData: ipData, historyPlot: historyPlot }
 
 app.get '/:ip/log', (req, res) ->
-  res.render 'log'
+  ip = req.params.ip
+  if not config.ipRule ip
+    res.redirect '/category'
+    return
+  date = new Date()
+  res.redirect "/#{ip}/log/#{date.getYear}/#{date.getMonth+1}"
 
 app.get '/:ip/log/:year/:month', (req, res) ->
-  # get from a single month.
+  ip = req.params.ip
+
+  if not config.ipRule ip
+    res.redirect '/category'
+    return
+
+  date = new Date(parseInt(req.params.year, 10), parseInt(req.params.month, 10)-1, 1)
+
+  model.daily.getHistory ip, date, (error, result) ->
+    res.render 'daily', {ip: ip, date: date, result: result.rows}
 
 app.get '/:ip/log/:year/:month/:day', (req, res) ->
   # get from a single day.

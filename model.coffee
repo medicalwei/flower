@@ -18,8 +18,10 @@ class DataStorage
   getDataFromDate: (date, callback) ->
     @db.query "SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback
 
-  getDataFromIP: (ip, since, offset, callback) ->
-    @db.query "SELECT * FROM daily WHERE ip = $1 AND date >= $2 ORDER BY date DESC OFFSET $3", [ip, since, offset], callback
+  getDataFromIP: (ip, since, callback) ->
+    due = new Date(since.getTime())
+    due.setMonth(due.getMonth()+1)
+    @db.query "SELECT * FROM daily WHERE ip = $1 AND date >= $2 AND date < $3 ORDER BY date ASC", [ip, since, due], callback
 
   getData: (ip, date, callback) ->
     @db.query "SELECT * FROM daily WHERE ip = $1 AND date = $2", [ip, date], callback
@@ -107,6 +109,11 @@ class DailyCollection extends Collection
     @dataStorage.getLatestDailyData (error, result) ->
       collection.setIp data.ip, data.upload, data.download for data in result.rows
       callback() if callback
+
+  getHistory: (ip, month, callback)->
+    console.log month
+    @dataStorage.getDataFromIP ip, month, (error, result) ->
+      callback error, result
 
 class HourlyCollection extends Collection
   constructor: (@dataStorage)->

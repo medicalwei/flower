@@ -183,10 +183,32 @@
   });
 
   app.get('/:ip/log', function(req, res) {
-    return res.render('log');
+    var date, ip;
+    ip = req.params.ip;
+    if (!config.ipRule(ip)) {
+      res.redirect('/category');
+      return;
+    }
+    date = new Date();
+    return res.redirect("/" + ip + "/log/" + date.getYear + "/" + (date.getMonth + 1));
   });
 
-  app.get('/:ip/log/:year/:month', function(req, res) {});
+  app.get('/:ip/log/:year/:month', function(req, res) {
+    var date, ip;
+    ip = req.params.ip;
+    if (!config.ipRule(ip)) {
+      res.redirect('/category');
+      return;
+    }
+    date = new Date(parseInt(req.params.year, 10), parseInt(req.params.month, 10) - 1, 1);
+    return model.daily.getHistory(ip, date, function(error, result) {
+      return res.render('daily', {
+        ip: ip,
+        date: date,
+        result: result.rows
+      });
+    });
+  });
 
   app.get('/:ip/log/:year/:month/:day', function(req, res) {});
 
