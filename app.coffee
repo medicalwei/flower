@@ -11,7 +11,7 @@ app = module.exports = express.createServer()
 model = require './model'
 cronJob = require('cron').CronJob
 io = require('socket.io').listen(app)
- 
+
 # Configuration
 
 app.configure ->
@@ -104,7 +104,7 @@ netflowClient.on "message", (mesg, rinfo) ->
 global.views = {
   siteName: config.siteName
   siteUri: config.siteUri
-  # TODO sidebar: 
+  # TODO sidebar:
 }
 
 # Routes
@@ -158,7 +158,7 @@ app.get '/:ip/log/:year/:month', (req, res) ->
 
 app.get '/:ip/log/:year/:month/:day', (req, res) ->
   # get from a single day.
-    
+
 # Restore values from database, and launch the system.
 loadDatabase = (callback)->
   model.daily.restore ->
@@ -175,10 +175,10 @@ setupCronJobs = ->
     model.hourly.save()
     console.log "* data upserted"
 
-launch = -> 
+launch = ->
   # start cron jobs
   setupCronJobs()
-  
+
   # start listening
   netflowClient.bind config.netflowPort
   app.listen config.httpPort
@@ -186,7 +186,7 @@ launch = ->
   console.log "* running under #{app.settings.env} environment"
   console.log "* listening on port #{app.address().port} for web server"
   console.log "* listening on port #{netflowClient.address().port} for netflow client"
-  
+
 # ready, set, go!
 loadDatabase launch
 
