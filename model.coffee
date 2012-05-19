@@ -14,7 +14,7 @@ class DataStorage
     for ip, datum of data
       result = @db.query "SELECT upsert_hourly($1, $2, $3, $4)",
         [ip, date, datum.upload, datum.download]
-    
+
   getDataFromDate: (date, callback) ->
     @db.query "SELECT * FROM daily ORDER BY ip ASC WHERE date = $1", [date], callback
 
