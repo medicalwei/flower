@@ -221,13 +221,13 @@
   };
 
   setupCronJobs = function() {
-    cronJob('0 0 0 * * *', function() {
+    new cronJob('0 0 0 * * *', function() {
       return model.daily.rotate();
     });
-    cronJob('0 0 * * * *', function() {
+    new cronJob('0 0 * * * *', function() {
       return model.hourly.rotate();
     });
-    return cronJob('1 */10 * * * *', function() {
+    return new cronJob('1 */10 * * * *', function() {
       model.daily.save();
       model.hourly.save();
       return console.log("* data upserted");

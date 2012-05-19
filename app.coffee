@@ -166,11 +166,11 @@ loadDatabase = (callback)->
       callback()
 
 setupCronJobs = ->
-  cronJob '0 0 0 * * *', ->
+  new cronJob '0 0 0 * * *', ->
     model.daily.rotate()
-  cronJob '0 0 * * * *', ->
+  new cronJob '0 0 * * * *', ->
     model.hourly.rotate()
-  cronJob '1 */10 * * * *', ->
+  new cronJob '1 */10 * * * *', ->
     model.daily.save()
     model.hourly.save()
     console.log "* data upserted"
