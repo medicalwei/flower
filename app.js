@@ -87,7 +87,7 @@
   netflowClient = dgram.createSocket("udp4");
 
   netflowClient.on("message", function(mesg, rinfo) {
-    var bytes, dstIP, dstIPInbound, flow, hourlyIpData, ipData, packet, socketId, srcIP, srcIPInbound, status, target, updatedIps, _i, _len, _ref, _results;
+    var bytes, dstIp, dstIpInbound, flow, hourlyIpData, ip, ipData, packet, socketId, srcIp, srcIpInbound, status, target, updatedIps, _i, _len, _ref, _results;
     try {
       packet = new NetflowPacket(mesg);
       if (packet.header.version === 5) {
@@ -95,14 +95,16 @@
         _ref = packet.v5Flows;
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           flow = _ref[_i];
-          srcIP = flow.srcaddr.join('.');
-          srcIPInbound = config.ipRule(srcIP);
-          dstIP = flow.dstaddr.join('.');
-          dstIPInbound = config.ipRule(dstIP);
-          if (dstIPInbound && !srcIPInbound) {
+          srcIp = flow.srcaddr.join('.');
+          srcIpInbound = config.ipRule(srcIp);
+          dstIp = flow.dstaddr.join('.');
+          dstIpInbound = config.ipRule(dstIp);
+          if (dstIpInbound && !srcIpInbound) {
+            ip = dstIp;
             status = "download";
             bytes = flow.dOctets;
-          } else if (srcIPInbound && !dstIPInbound) {
+          } else if (srcIpInbound && !dstIpInbound) {
+            ip = srcIp;
             status = "upload";
             bytes = flow.dOctets;
           } else {
