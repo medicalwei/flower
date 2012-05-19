@@ -63,15 +63,17 @@ netflowClient.on "message", (mesg, rinfo) ->
     if packet.header.version == 5
       updatedIps = {}
       for flow in packet.v5Flows
-        srcIP = flow.srcaddr.join '.'
-        srcIPInbound = config.ipRule srcIP
-        dstIP = flow.dstaddr.join '.'
-        dstIPInbound = config.ipRule dstIP
+        srcIp = flow.srcaddr.join '.'
+        srcIpInbound = config.ipRule srcIp
+        dstIp = flow.dstaddr.join '.'
+        dstIpInbound = config.ipRule dstIp
 
-        if dstIPInbound and not srcIPInbound # this flow means download
+        if dstIpInbound and not srcIpInbound # this flow means download
+          ip = dstIp
           status = "download"
           bytes = flow.dOctets
-        else if srcIPInbound and not dstIPInbound # this flow means upload
+        else if srcIpInbound and not dstIpInbound # this flow means upload
+          ip = srcIp
           status = "upload"
           bytes = flow.dOctets
         else
