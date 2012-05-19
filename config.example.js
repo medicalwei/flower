@@ -10,9 +10,6 @@ exports.siteUri = "http://localhost:3000";
 exports.netflowPort = 9991;
 exports.httpPort = 3000;
 
-// outbound SNMP interface index
-exports.outboundInterface = 0x0017;
-
 // postgresql database uri
 exports.databaseUri = "tcp://someone:meow@localhost/flower";
 
