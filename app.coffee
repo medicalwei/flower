@@ -168,8 +168,14 @@ loadDatabase = (callback)->
       callback()
 
 setupCronJobs = ->
-  new cronJob '0 0 0 * * *', model.daily.rotate, null, true
-  new cronJob '0 0 * * * *', model.hourly.rotate, null, true
+  new cronJob '0 0 0 * * *', ->
+    model.daily.rotate
+  , null, true
+
+  new cronJob '0 0 * * * *', ->
+    model.hourly.rotate
+  , null, true
+
   new cronJob '1 */10 * * * *', ->
     model.daily.save()
     model.hourly.save()

@@ -223,8 +223,12 @@
   };
 
   setupCronJobs = function() {
-    new cronJob('0 0 0 * * *', model.daily.rotate, null, true);
-    new cronJob('0 0 * * * *', model.hourly.rotate, null, true);
+    new cronJob('0 0 0 * * *', function() {
+      return model.daily.rotate;
+    }, null, true);
+    new cronJob('0 0 * * * *', function() {
+      return model.hourly.rotate;
+    }, null, true);
     return new cronJob('1 */10 * * * *', function() {
       model.daily.save();
       model.hourly.save();
